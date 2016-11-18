@@ -8,7 +8,7 @@
 #include <iostream>
 #include <algorithm>
 
-#define FAL_ARENA_BLOCK_POW 5u  /* 32 bytes*/
+#define FAL_ARENA_BLOCK_POW 2u  /* 32 bytes*/
 #define FAL_ARENA_POW       16u /* 64 KiB */
 #include "fal/arena.h"
 

@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClInclude Include="fal\arena.h" />
     <ClInclude Include="fal\bitset.h" />
+    <ClInclude Include="fal\utils.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>

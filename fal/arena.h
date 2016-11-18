@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include "utils.h"
 #include "bitset.h"
 
 #ifdef __cplusplus
@@ -52,8 +53,10 @@ typedef struct fal_arena_t fal_arena_t;
 #define FAL_ARENA_UNUSED_BYTES  (FAL_ARENA_BITSET_SIZE / CHAR_BIT)
 
 
-static_assert(FAL_ARENA_UNUSED_BITS >= CHAR_BIT * 2,
-    "Not enough unused bits (increase FAL_ARENA_POW or decrease FAL_ARENA_BLOCK_POW)");
+static inline void fal_arena__asertions() {
+    // Ensure there's enough unused bits at the beginning of each btiset to store additional data.
+    FAL_STATIC_ASSERT(FAL_ARENA_UNUSED_BITS >= CHAR_BIT * 2);
+}
 
 static inline int fal_arena__ix_for(void* ptr) {
     uintptr_t block = ((uintptr_t)ptr) & FAL_ARENA_MASK;
