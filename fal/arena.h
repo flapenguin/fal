@@ -11,6 +11,8 @@
     (req) FAL_ARENA_DEF_BLOCK_POW - power of block size
                                     (i.e. 4 means 16 byte blocks)
 
+    (opt) FAL_ARENA_DEF_NO_UNDEF  - do not undefined all compile-time parameters
+
   Compile-time constraints:
     1. UnusedBits must be enough for at least 2 bytes.
                             2 * ArenaSize
@@ -227,9 +229,12 @@ static inline void FAL_CONCAT(FAL_ARENA_DEF_NAME, _free)(void* ptr) {
 #undef FAL_ARENA_UNUSED_BITS
 #undef FAL_ARENA_UNUSED_BYTES
 
+// Undef compile-time parameters.
+#ifndef FAL_ARENA_DEF_NO_UNDEF
 #undef FAL_ARENA_DEF_BLOCK_POW
 #undef FAL_ARENA_DEF_POW
 #undef FAL_ARENA_DEF_NAME
+#endif /* FAL_ARENA_DEF_NO_UNDEF */
 
 #ifdef __cplusplus
 }
