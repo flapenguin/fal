@@ -30,14 +30,9 @@ int main(int argc, char* argv[]) {
     fal_arena_t* arena = (fal_arena_t*)mem;
     fal_arena_init(arena);
 
-    uint16_t* top = fal_arena__top_ptr(arena);
-    cout << "top@" << top << " = " << *top << endl;
-
     auto print_bitset = [&]() {
-        void* bitset_b = fal_arena__bitset_b(arena);
-
-        cout << (*top - fal_arena__FIRST) << "/" << fal_arena_TOTAL << " blocks"
-            << "(starting at " << fal_arena__FIRST << "):\n\t";
+        cout << (fal_arena_bumptop(arena) - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
+            << "(starting at " << fal_arena_FIRST << "):\n\t";
 
         for (void* ptr = fal_arena_first(arena); ptr; ptr = fal_arena_next_noskip(ptr)) {
             bool used = fal_arena_used(ptr);

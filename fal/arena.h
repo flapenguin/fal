@@ -38,6 +38,9 @@
         get size (in blocks) of allocation
       arena_t* arena_for(void*)
         get arena used to allocate passed memory
+      unsigned int arena_bumptop(arena_t*)
+        get bump allocator position (between arena_FIRST and arena_LAST)
+        no blocks are allocated above this position
 
     Iterating:
       void* arena_first(arena_t*)
@@ -50,7 +53,10 @@
     Constants:
       arena_SIZE       - arena size in bytes
       arena_BLOCK_SIZE - block size in bytes
+      arena_FIRST      - id of first block available for allocation
+      arena_LAST       - id of last block available for allocation
       arena_TOTAL      - nubmer of blocks available for allocation
+                         equals (arena_LAST - arena_FIRST)
 
   Compile-time parameters:
     (req) FAL_ARENA_DEF_NAME      - prefix for resulting type and functions
@@ -113,6 +119,8 @@ extern "C" {
 #define FAL_ARENA_TOTAL         FAL__T(_TOTAL)
 #define FAL_ARENA_SIZE          FAL__T(_SIZE)
 #define FAL_ARENA_BLOCK_SIZE    FAL__T(_BLOCK_SIZE)
+#define FAL_ARENA_FIRST         FAL__T(_FIRST)
+#define FAL_ARENA_LAST          FAL__T(_LAST)
 /* Internal */
 #define FAL_ARENA__BLOCK_POW    FAL__T(__BLOCK_POW)
 #define FAL_ARENA__POW          FAL__T(__POW)
@@ -120,7 +128,6 @@ extern "C" {
 #define FAL_ARENA__BITSET_SIZE  FAL__T(__BITSET_SIZE)
 #define FAL_ARENA__BLOCK_MASK   FAL__T(__BLOCK_MASK)
 #define FAL_ARENA__MASK         FAL__T(__MASK)
-#define FAL_ARENA__FIRST        FAL__T(__FIRST)
 #define FAL_ARENA__UNUSED_BITS  FAL__T(__UNUSED_BITS)
 #define FAL_ARENA__UNUSED_BYTES FAL__T(__UNUSED_BYTES)
 
@@ -135,9 +142,10 @@ enum FAL_CONCAT(FAL_ARENA_T, _defs) {
   FAL_ARENA__BITSET_SIZE = FAL_ARENA__BLOCKS / CHAR_BIT,
   FAL_ARENA__BLOCK_MASK = FAL_ARENA_SIZE - 1,
   FAL_ARENA__MASK = ~FAL_ARENA__BLOCK_MASK,
-  FAL_ARENA__FIRST = 2 * FAL_ARENA__BITSET_SIZE / FAL_ARENA_BLOCK_SIZE,
-  FAL_ARENA_TOTAL = FAL_ARENA__BLOCKS - FAL_ARENA__FIRST,
-  FAL_ARENA__UNUSED_BITS = FAL_ARENA__FIRST,
+  FAL_ARENA_FIRST = 2 * FAL_ARENA__BITSET_SIZE / FAL_ARENA_BLOCK_SIZE,
+  FAL_ARENA_LAST = FAL_ARENA__BLOCKS,
+  FAL_ARENA_TOTAL = FAL_ARENA__BLOCKS - FAL_ARENA_FIRST,
+  FAL_ARENA__UNUSED_BITS = FAL_ARENA_FIRST,
   FAL_ARENA__UNUSED_BYTES = FAL_ARENA__UNUSED_BITS / CHAR_BIT
 };
 
@@ -211,18 +219,59 @@ static inline size_t FAL__T(__size)(void* bitset_a, void* bitset_b, size_t top, 
 }
 
 /******************************************************************************/
-/*                                BANANA BANANA                               */
+/*                              INITIALIZATION                                */
+/******************************************************************************/
+
+static inline void FAL__T(_init)(FAL_ARENA_T* arena) {
+  assert(((uintptr_t)arena & FAL_ARENA__BLOCK_MASK) == 0
+    && "[" FAL_STR(FAL__T(_init)) "] arena is not aligned to its size");
+  memset(arena, 0, FAL_ARENA_FIRST * FAL_ARENA_BLOCK_SIZE);
+  *FAL__T(__top_ptr)(arena) = FAL_ARENA_FIRST;
+}
+
+/******************************************************************************/
+/*                                  QUERYING                                  */
 /******************************************************************************/
 
 static inline FAL_ARENA_T* FAL__T(_for)(void* ptr) {
   return (FAL_ARENA_T*)( ((uintptr_t)ptr) & FAL_ARENA__MASK );
 }
 
-static inline void FAL__T(_init)(FAL_ARENA_T* arena) {
-  assert(((uintptr_t)arena & FAL_ARENA__BLOCK_MASK) == 0
-    && "[" FAL_STR(FAL__T(_init)) "] arena is not aligned to its size");
-  memset(arena, 0, FAL_ARENA__FIRST * FAL_ARENA_BLOCK_SIZE);
-  *FAL__T(__top_ptr)(arena) = FAL_ARENA__FIRST;
+static inline int FAL__T(_used)(void* ptr) {
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+  void* bitset_b = FAL__T(__bitset_b)(arena);
+
+  size_t ix = FAL__T(__ix_for)(ptr);
+
+  return !FAL__T(__is_free)(bitset_a, bitset_b, ix);
+}
+
+static inline size_t FAL__T(_size)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_size)) "] ptr cannot be NULL");
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  uint16_t top = *FAL__T(__top_ptr)(arena);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+  void* bitset_b = FAL__T(__bitset_b)(arena);
+
+  size_t ix = FAL__T(__ix_for)(ptr);
+
+  return FAL__T(__size)(bitset_a, bitset_b, top, ix);
+}
+
+static inline int FAL__T(_marked)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_marked)) "] ptr cannot be NULL");
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  size_t start = FAL__T(__ix_for)(ptr);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+
+  return fal_bitset_test(bitset_a, start);
+}
+
+static inline unsigned int FAL__T(_bumptop)(FAL_ARENA_T* arena) {
+  return *FAL__T(__top_ptr)(arena);
 }
 
 /******************************************************************************/
@@ -256,7 +305,7 @@ static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size) {
   void* bitset_a = FAL__T(__bitset_a)(arena);
   void* bitset_b = FAL__T(__bitset_b)(arena);
 
-  size_t start = FAL_ARENA__FIRST;
+  size_t start = FAL_ARENA_FIRST;
   for (; start < FAL_ARENA_TOTAL; ) {
     size_t free = 0;
     for (; free < size; free++) {
@@ -333,43 +382,6 @@ static inline void FAL__T(_unmark)(void* ptr) {
 }
 
 /******************************************************************************/
-/*                                  QUERYING                                  */
-/******************************************************************************/
-
-static inline int FAL__T(_used)(void* ptr) {
-  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
-  void* bitset_a = FAL__T(__bitset_a)(arena);
-  void* bitset_b = FAL__T(__bitset_b)(arena);
-
-  size_t ix = FAL__T(__ix_for)(ptr);
-
-  return !FAL__T(__is_free)(bitset_a, bitset_b, ix);
-}
-
-static inline size_t FAL__T(_size)(void* ptr) {
-  assert(ptr && "[" FAL_STR(FAL__T(_size)) "] ptr cannot be NULL");
-
-  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
-  uint16_t top = *FAL__T(__top_ptr)(arena);
-  void* bitset_a = FAL__T(__bitset_a)(arena);
-  void* bitset_b = FAL__T(__bitset_b)(arena);
-
-  size_t ix = FAL__T(__ix_for)(ptr);
-
-  return FAL__T(__size)(bitset_a, bitset_b, top, ix);
-}
-
-static inline int FAL__T(_marked)(void* ptr) {
-  assert(ptr && "[" FAL_STR(FAL__T(_unmark)) "] ptr cannot be NULL");
-
-  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
-  size_t start = FAL__T(__ix_for)(ptr);
-  void* bitset_a = FAL__T(__bitset_a)(arena);
-
-  return fal_bitset_test(bitset_a, start);
-}
-
-/******************************************************************************/
 /*                                 ITERATING                                  */
 /******************************************************************************/
 
@@ -377,11 +389,11 @@ static inline void* FAL__T(_first)(FAL_ARENA_T* arena) {
     assert(arena && "[" FAL_STR(FAL__T(_first)) "] arena cannot be NULL");
   uint16_t* top = FAL__T(__top_ptr)(arena);
 
-  if (*top == FAL_ARENA__FIRST) {
+  if (*top == FAL_ARENA_FIRST) {
     return 0;
   }
 
-  return FAL__T(__block)(arena, FAL_ARENA__FIRST);
+  return FAL__T(__block)(arena, FAL_ARENA_FIRST);
 }
 
 static inline void* FAL__T(_next_noskip)(void* ptr) {
@@ -422,7 +434,7 @@ static inline void* FAL__T(_next)(void* ptr) {
 #undef FAL_ARENA__BITSET_SIZE
 #undef FAL_ARENA__BLOCK_MASK
 #undef FAL_ARENA__MASK
-#undef FAL_ARENA__FIRST
+#undef FAL_ARENA_FIRST
 #undef FAL_ARENA_TOTAL
 #undef FAL_ARENA__UNUSED_BITS
 #undef FAL_ARENA__UNUSED_BYTES
