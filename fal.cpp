@@ -36,10 +36,10 @@ int main(int argc, char* argv[]) {
         void* bitset_a = fal_arena__bitset_a(arena);
         void* bitset_b = fal_arena__bitset_b(arena);
 
-        cout << (*top - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
-            << "(starting at " << fal_arena_FIRST << "):\n\t";
+        cout << (*top - fal_arena__FIRST) << "/" << fal_arena_TOTAL << " blocks"
+            << "(starting at " << fal_arena__FIRST << "):\n\t";
 
-        for (size_t ix = fal_arena_FIRST; ix < std::min((uint32_t)fal_arena_BLOCKS, (uint32_t)*top); ix++) {
+        for (size_t ix = fal_arena__FIRST; ix < std::min((uint32_t)fal_arena__BLOCKS, (uint32_t)*top); ix++) {
             bool a = fal_bitset_test(bitset_a, ix);
             bool b = fal_bitset_test(bitset_b, ix);
 
