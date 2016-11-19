@@ -8,8 +8,9 @@
 #include <iostream>
 #include <algorithm>
 
-#define FAL_ARENA_BLOCK_POW 2u  /* 32 bytes*/
-#define FAL_ARENA_POW       16u /* 64 KiB */
+#define FAL_ARENA_DEF_BLOCK_POW 4u  /* 16 bytes*/
+#define FAL_ARENA_DEF_POW       16u /* 64 KiB */
+#define FAL_ARENA_DEF_NAME      fal_arena
 #include "fal/arena.h"
 
 #define __VC_EXTRALEAN
@@ -22,7 +23,7 @@ int main(int argc, char* argv[]) {
     using std::cout;
     using std::endl;
 
-    void* mem = VirtualAlloc(0, FAL_ARENA_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    void* mem = VirtualAlloc(0, fal_arena_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     assert(mem && "VirtualAlloc");
 
     fal_arena_t* arena = (fal_arena_t*)mem;
@@ -35,14 +36,14 @@ int main(int argc, char* argv[]) {
         void* bitset_a = fal_arena__bitset_a(arena);
         void* bitset_b = fal_arena__bitset_b(arena);
 
-        cout << (*top - FAL_ARENA_FIRST) << "/" << FAL_ARENA_TOTAL << " blocks"
-            << "(starting at " << FAL_ARENA_FIRST << ") : ";
+        cout << (*top - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
+            << "(starting at " << fal_arena_FIRST << ") : ";
 
-        for (size_t ix = FAL_ARENA_FIRST; ix < std::min(FAL_ARENA_BLOCKS, (uint32_t)*top); ix++) {
+        for (size_t ix = fal_arena_FIRST; ix < std::min((uint32_t)fal_arena_BLOCKS, (uint32_t)*top); ix++) {
             bool a = fal_bitset_test(bitset_a, ix);
             bool b = fal_bitset_test(bitset_b, ix);
 
-            cout << (a ? (b ? 'M' : '-') : (b ? 'x' : '?'));
+            cout << (a ? (b ? 'M' : '-') : (b ? 'x' : '.'));
         }
 
         cout << endl;
@@ -50,13 +51,13 @@ int main(int argc, char* argv[]) {
 
     print_bitset();
 
-    fal_arena_alloc(arena, 1);
+    fal_arena_bumpalloc(arena, 1);
     cout << *top << endl;
-    fal_arena_alloc(arena, 15);
+    fal_arena_bumpalloc(arena, 15);
     cout << *top << endl;
-    fal_arena_alloc(arena, 16);
+    fal_arena_bumpalloc(arena, 16);
     cout << *top << endl;
-    fal_arena_alloc(arena, 17);
+    fal_arena_bumpalloc(arena, 17);
     cout << *top << endl;
     fal_arena_alloc(arena, 512);
     cout << *top << endl;

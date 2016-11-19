@@ -5,6 +5,12 @@
 extern "C" {
 #endif
 
+#define FAL__CONCAT(A, B) A ## B
+#define FAL_CONCAT(A, B) FAL__CONCAT(A, B)
+
+#define FAL__STR(X) #X
+#define FAL_STR(X) FAL__STR(X)
+
 #define FAL_STATIC_ASSERT(Condition) \
     ((void) sizeof(char[1 - 2*!(Condition)]) )
 
