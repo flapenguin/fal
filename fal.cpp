@@ -49,27 +49,25 @@ int main(int argc, char* argv[]) {
         cout << endl;
     };
 
-    print_bitset();
+    auto p = print_bitset;
 
-    fal_arena_bumpalloc(arena, 1);
-    cout << *top << endl;
-    fal_arena_bumpalloc(arena, 15);
-    cout << *top << endl;
-    fal_arena_bumpalloc(arena, 16);
-    cout << *top << endl;
-    void* x = fal_arena_bumpalloc(arena, 17);
-    cout << *top << endl;
-    void* last = fal_arena_alloc(arena, 512);
-    cout << *top << endl;
-
-    fal_arena_free(x);
+    p();
+    fal_arena_alloc(arena, 1);
+    p();
+    fal_arena_alloc(arena, 15);
+    p();
+    fal_arena_alloc(arena, 16);
+    p();
+    void* two_blocks = fal_arena_alloc(arena, 17);
+    p();
+    void* huge = fal_arena_alloc(arena, 512);
+    p();
+    fal_arena_free(two_blocks);
+    p();
     fal_arena_alloc(arena, 32);
-
-    print_bitset();
-
-    fal_arena_free(last);
-
-    print_bitset();
+    p();
+    fal_arena_free(huge);
+    p();
 
     return 0;
 }

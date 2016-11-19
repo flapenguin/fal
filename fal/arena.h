@@ -4,6 +4,22 @@
 /*
   Generic arena with configurable arena size, block size and typename.
 
+  API:
+    arena_ prefix is overriden by <FAL_ARENA_DEF_NAME>_.
+
+    void arena_init(arena_t*)
+      (re)initialize arena in memory
+    arena_t* arena_for(void*)
+      get arena used to allocate passed memory
+
+    void* arena_bumpalloc(arena_t*, size_t)
+      allocate memory at the end of the arena or return 0 if arena is full
+    void* arena_alloc(arena_t*, size_t)
+      tries arena_bumpalloc and fallbacks to looking for freed blocks
+
+    void arena_free(void*)
+      frees passed allocation
+
   Compile-time parameters:
     (req) FAL_ARENA_DEF_NAME      - prefix for resulting type and functions
     (req) FAL_ARENA_DEF_ARENA_POW - power of arena size
@@ -138,6 +154,7 @@ static inline FAL_ARENA_T* FAL_CONCAT(FAL_ARENA_DEF_NAME, _for)(void* ptr) {
 static inline void FAL_CONCAT(FAL_ARENA_DEF_NAME, _init)(FAL_ARENA_T* arena) {
   assert(((uintptr_t)arena & FAL_ARENA_BLOCK_MASK) == 0
     && "[" FAL_STR(FAL_CONCAT(FAL_ARENA_DEF_NAME, _init)) "] arena is not aligned to its size");
+  memset(arena, 0, FAL_ARENA_FIRST * FAL_ARENA_BLOCK_SIZE);
   *FAL_CONCAT(FAL_ARENA_DEF_NAME, __top_ptr)(arena) = FAL_ARENA_FIRST;
 }
 
@@ -157,6 +174,12 @@ static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, _bumpalloc)(FAL_ARENA_T* aren
 
 static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, _alloc)(FAL_ARENA_T* arena, size_t size) {
   assert(size != 0 && "[" FAL_STR(FAL_CONCAT(FAL_ARENA_DEF_NAME, _alloc)) "] size cannot be zero");
+
+  void* mem = FAL_CONCAT(FAL_ARENA_DEF_NAME, _bumpalloc)(arena, size);
+  if (mem) {
+    return mem;
+  }
+
   size = (size + FAL_ARENA_BLOCK_SIZE - 1) / FAL_ARENA_BLOCK_SIZE;
 
   void* bitset_a = FAL_CONCAT(FAL_ARENA_DEF_NAME, __bitset_a)(arena);
@@ -180,12 +203,6 @@ static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, _alloc)(FAL_ARENA_T* arena, s
 
   if (start > FAL_ARENA_TOTAL) {
     return 0;
-  }
-
-  // Adjust dump allocation pointer.
-  uint16_t* top = FAL_CONCAT(FAL_ARENA_DEF_NAME, __top_ptr)(arena);
-  if (start >= *top) {
-    *top += size;
   }
 
   return FAL_CONCAT(FAL_ARENA_DEF_NAME, __markalloc)(arena, start, size);
