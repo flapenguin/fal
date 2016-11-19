@@ -60,11 +60,11 @@
     Bitsets A and B contain single bit per block.
     Bitset A means "flagged" and bitset B means "start of allocation".
 
-    A | B
-    0   0 Block is not allocated.
-    0   1 Block is allocated and flag is unset.
-    1   0 Block is a continuation of allocation.
-    1   1 Block is allocated and flag is set.
+    B | A
+    0   0 Free block.
+    0   1 Allocation extension.
+    1   0 Start of allocation, flag is unset.
+    1   1 Start of allocation, flag is set.
 
     X space is used to store ix of first free block.
     Y and Z space is used for user data.
@@ -116,7 +116,7 @@ enum FAL_CONCAT(FAL_ARENA_T, _defs) {
   FAL_ARENA__FIRST = 2 * FAL_ARENA__BITSET_SIZE / FAL_ARENA_BLOCK_SIZE,
   FAL_ARENA_TOTAL = FAL_ARENA__BLOCKS - FAL_ARENA__FIRST,
   FAL_ARENA__UNUSED_BITS = FAL_ARENA__FIRST,
-  FAL_ARENA__UNUSED_BYTES = FAL_ARENA__BITSET_SIZE / CHAR_BIT
+  FAL_ARENA__UNUSED_BYTES = FAL_ARENA__UNUSED_BITS / CHAR_BIT
 };
 
 static inline void FAL__T(__asertions)() {
@@ -222,7 +222,9 @@ static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size) {
 }
 
 static inline void FAL__T(_free)(void* ptr) {
-  assert(ptr && "[" FAL_STR(FAL__T(_free)) "] size cannot be zero");
+  if (!ptr) {
+    return;
+  }
 
   FAL_ARENA_T* arena = FAL__T(_for)(ptr);
   size_t start = FAL__T(__ix_for)(ptr);
@@ -244,6 +246,34 @@ static inline void FAL__T(_free)(void* ptr) {
   if (end >= *top) {
     *top = start;
   }
+}
+
+static inline void FAL__T(_mark)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_mark)) "] ptr cannot be NULL");
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  size_t start = FAL__T(__ix_for)(ptr);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+  fal_bitset_set(bitset_a, start);
+}
+
+static inline void FAL__T(_unmark)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_unmark)) "] ptr cannot be NULL");
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  size_t start = FAL__T(__ix_for)(ptr);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+  fal_bitset_clear(bitset_a, start);
+}
+
+static inline int FAL__T(_marked)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_unmark)) "] ptr cannot be NULL");
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  size_t start = FAL__T(__ix_for)(ptr);
+  void* bitset_a = FAL__T(__bitset_a)(arena);
+
+  return fal_bitset_test(bitset_a, start);
 }
 
 #undef FAL__T

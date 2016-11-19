@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <iostream>
 #include <algorithm>
+#include <vector>
 
 #define FAL_ARENA_DEF_BLOCK_POW 4u  /* 16 bytes*/
 #define FAL_ARENA_DEF_POW       16u /* 64 KiB */
@@ -33,17 +34,16 @@ int main(int argc, char* argv[]) {
     cout << "top@" << top << " = " << *top << endl;
 
     auto print_bitset = [&]() {
-        void* bitset_a = fal_arena__bitset_a(arena);
         void* bitset_b = fal_arena__bitset_b(arena);
 
         cout << (*top - fal_arena__FIRST) << "/" << fal_arena_TOTAL << " blocks"
             << "(starting at " << fal_arena__FIRST << "):\n\t";
 
         for (size_t ix = fal_arena__FIRST; ix < std::min((uint32_t)fal_arena__BLOCKS, (uint32_t)*top); ix++) {
-            bool a = fal_bitset_test(bitset_a, ix);
-            bool b = fal_bitset_test(bitset_b, ix);
+            bool allocation_start = fal_bitset_test(bitset_b, ix);
+            bool marked = fal_arena_marked(fal_arena__block(arena, ix));
 
-            cout << (a ? (b ? 'M' : '-') : (b ? 'x' : '.'));
+            cout << (allocation_start ? (marked ? 'M' : 'x') : (marked ? '-' : '.'));
         }
 
         cout << endl;
@@ -51,23 +51,29 @@ int main(int argc, char* argv[]) {
 
     auto p = print_bitset;
 
-    p();
-    fal_arena_alloc(arena, 1);
-    p();
-    fal_arena_alloc(arena, 15);
-    p();
-    fal_arena_alloc(arena, 16);
-    p();
-    void* two_blocks = fal_arena_alloc(arena, 17);
-    p();
-    void* huge = fal_arena_alloc(arena, 512);
-    p();
-    fal_arena_free(two_blocks);
-    p();
-    fal_arena_alloc(arena, 32);
-    p();
-    fal_arena_free(huge);
-    p();
+    std::vector<int> sizes{ { 1, 15, 16, 17, 512, -2, 54, 76 } };
+    std::vector<void*> allocations;
+
+    for (int size : sizes) {
+        if (size < 0) {
+            auto it = allocations.end() + size;
+            fal_arena_free(*it);
+        } else {
+            void* x = fal_arena_alloc(arena, size);
+            allocations.push_back(x);
+        }
+        print_bitset();
+    }
+
+    std::vector<int> to_mark{ {1, 1, 3, 5, 7} };
+    for (int mark : to_mark) {
+        if (mark < 0) {
+            fal_arena_unmark(allocations[-mark - 1]);
+        } else {
+            fal_arena_mark(allocations[mark - 1]);
+        }
+        print_bitset();
+    }
 
     return 0;
 }
