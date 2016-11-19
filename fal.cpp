@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
         void* bitset_b = fal_arena__bitset_b(arena);
 
         cout << (*top - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
-            << "(starting at " << fal_arena_FIRST << ") : ";
+            << "(starting at " << fal_arena_FIRST << "):\n\t";
 
         for (size_t ix = fal_arena_FIRST; ix < std::min((uint32_t)fal_arena_BLOCKS, (uint32_t)*top); ix++) {
             bool a = fal_bitset_test(bitset_a, ix);
@@ -59,11 +59,15 @@ int main(int argc, char* argv[]) {
     cout << *top << endl;
     void* x = fal_arena_bumpalloc(arena, 17);
     cout << *top << endl;
-    fal_arena_alloc(arena, 512);
+    void* last = fal_arena_alloc(arena, 512);
     cout << *top << endl;
 
     fal_arena_free(x);
     fal_arena_alloc(arena, 32);
+
+    print_bitset();
+
+    fal_arena_free(last);
 
     print_bitset();
 

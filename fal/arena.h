@@ -98,10 +98,6 @@ static inline int FAL_CONCAT(FAL_ARENA_DEF_NAME, __ix_for)(void* ptr) {
   return block >> FAL_ARENA_BLOCK_POW;
 }
 
-static inline FAL_ARENA_T* FAL_CONCAT(FAL_ARENA_DEF_NAME, __from_block)(void* ptr) {
-  return (FAL_ARENA_T*)(void*)((uintptr_t)ptr & FAL_ARENA_MASK);
-}
-
 static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, __block)(FAL_ARENA_T* arena, int ix) {
   return (char*)arena + ix*FAL_ARENA_BLOCK_SIZE;
 }
@@ -134,8 +130,7 @@ static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, __markalloc)(FAL_ARENA_T* are
 }
 
 static inline FAL_ARENA_T* FAL_CONCAT(FAL_ARENA_DEF_NAME, _for)(void* ptr) {
-  uintptr_t x = ((uintptr_t)ptr) & FAL_ARENA_BLOCK_MASK;
-  return (FAL_ARENA_T*)x;
+  return (FAL_ARENA_T*)( ((uintptr_t)ptr) & FAL_ARENA_MASK );
 }
 
 static inline void FAL_CONCAT(FAL_ARENA_DEF_NAME, _init)(FAL_ARENA_T* arena) {
@@ -197,7 +192,7 @@ static inline void* FAL_CONCAT(FAL_ARENA_DEF_NAME, _alloc)(FAL_ARENA_T* arena, s
 static inline void FAL_CONCAT(FAL_ARENA_DEF_NAME, _free)(void* ptr) {
   assert(ptr && "[" FAL_STR(FAL_CONCAT(FAL_ARENA_DEF_NAME, _free)) "] size cannot be zero");
 
-  FAL_ARENA_T* arena = FAL_CONCAT(FAL_ARENA_DEF_NAME, __from_block)(ptr);
+  FAL_ARENA_T* arena = FAL_CONCAT(FAL_ARENA_DEF_NAME, _for)(ptr);
   size_t start = FAL_CONCAT(FAL_ARENA_DEF_NAME, __ix_for)(ptr);
 
   void* bitset_a = FAL_CONCAT(FAL_ARENA_DEF_NAME, __bitset_a)(arena);
@@ -206,9 +201,16 @@ static inline void FAL_CONCAT(FAL_ARENA_DEF_NAME, _free)(void* ptr) {
   fal_bitset_clear(bitset_a, start);
   fal_bitset_clear(bitset_b, start);
 
-  for (size_t ix = start + 1; !fal_bitset_test(bitset_b, ix); ix++) {
-    fal_bitset_clear(bitset_a, ix);
-    fal_bitset_clear(bitset_b, ix);
+  uint16_t* top = FAL_CONCAT(FAL_ARENA_DEF_NAME, __top_ptr)(arena);
+  size_t end = start + 1;
+  for (; !fal_bitset_test(bitset_b, end) && end < *top; end++) {
+    fal_bitset_clear(bitset_a, end);
+    fal_bitset_clear(bitset_b, end);
+  }
+
+  // Adjust dump allocation pointer.
+  if (end >= *top) {
+    *top = start;
   }
 }
 
