@@ -57,10 +57,13 @@ int main(int argc, char* argv[]) {
     cout << *top << endl;
     fal_arena_bumpalloc(arena, 16);
     cout << *top << endl;
-    fal_arena_bumpalloc(arena, 17);
+    void* x = fal_arena_bumpalloc(arena, 17);
     cout << *top << endl;
     fal_arena_alloc(arena, 512);
     cout << *top << endl;
+
+    fal_arena_free(x);
+    fal_arena_alloc(arena, 32);
 
     print_bitset();
 
