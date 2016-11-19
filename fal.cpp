@@ -39,11 +39,14 @@ int main(int argc, char* argv[]) {
         cout << (*top - fal_arena__FIRST) << "/" << fal_arena_TOTAL << " blocks"
             << "(starting at " << fal_arena__FIRST << "):\n\t";
 
-        for (size_t ix = fal_arena__FIRST; ix < std::min((uint32_t)fal_arena__BLOCKS, (uint32_t)*top); ix++) {
-            bool allocation_start = fal_bitset_test(bitset_b, ix);
-            bool marked = fal_arena_marked(fal_arena__block(arena, ix));
+        for (void* ptr = fal_arena_first(arena); ptr; ptr = fal_arena_next_noskip(ptr)) {
+            bool used = fal_arena_used(ptr);
+            bool marked = fal_arena_marked(ptr);
+            cout << (!used ? '.' : (marked ? 'M' : 'x'));
 
-            cout << (allocation_start ? (marked ? 'M' : 'x') : (marked ? '-' : '.'));
+            for (int i = 0; i < fal_arena_size(ptr) - 1; i++) {
+                cout << (used ? '-' : '.');
+            }
         }
 
         cout << endl;
