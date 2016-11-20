@@ -69,10 +69,12 @@
     Iterating:
       void* arena_first(arena_t*)
         get first allocation
-      void* arena_next_noskip(void*)
-        get next allocation, including freed blocks (use arena_used)
+      void* arena_first_noskip(arena_t*)
+        get first allocation, including freed blocks (use arena_used)
       void* arena_next(void*)
         get next allocation, skipping freed blocks
+      void* arena_next_noskip(void*)
+        get next allocation, including freed blocks (use arena_used)
 
     Constants:
       arena_SIZE          - arena size in bytes
@@ -112,6 +114,7 @@
 */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
@@ -208,8 +211,9 @@ static inline void FAL__T(_unmark)(void* ptr);
 static inline void FAL__T(_mark_all)(FAL_ARENA_T* arena, int mark);
 
 static inline void* FAL__T(_first)(FAL_ARENA_T* arena);
-static inline void* FAL__T(_next_noskip)(void* ptr);
+static inline void* FAL__T(_first_noskip)(FAL_ARENA_T* arena);
 static inline void* FAL__T(_next)(void* ptr);
+static inline void* FAL__T(_next_noskip)(void* ptr);
 
 /******************************************************************************/
 /*                                INTERNALS                                   */
@@ -276,6 +280,10 @@ static inline size_t FAL__T(__size)(void* mark_bs, void* block_bs, size_t top, s
   if (FAL__T(__is_free)(mark_bs, block_bs, start)) {
     while (end < top && FAL__T(__is_free)(mark_bs, block_bs, end)) {
       end++;
+    }
+
+    if (end >= top && top != FAL_ARENA_LAST) {
+      end = FAL_ARENA_LAST;
     }
   }
   else {
@@ -476,14 +484,23 @@ static inline void FAL__T(_mark_all)(FAL_ARENA_T* arena, int mark) {
 /******************************************************************************/
 
 static inline void* FAL__T(_first)(FAL_ARENA_T* arena) {
-    assert(arena && "[" FAL_STR(FAL__T(_first)) "] arena cannot be NULL");
-  unsigned short* top = FAL__T(__top_ptr)(arena);
+  void* ptr = FAL__T(_first_noskip)(arena);
 
-  if (*top == FAL_ARENA_FIRST) {
-    return 0;
-  }
+  return FAL__T(_used)(ptr) ? ptr : FAL__T(_next)(ptr);
+}
+
+static inline void* FAL__T(_first_noskip)(FAL_ARENA_T* arena) {
+  assert(arena && "[" FAL_STR(FAL__T(_first)) "] arena cannot be NULL");
 
   return FAL__T(__block)(arena, FAL_ARENA_FIRST);
+}
+
+static inline void* FAL__T(_next)(void* ptr) {
+    do {
+        ptr = FAL__T(_next_noskip)(ptr);
+    } while (ptr && !FAL__T(_used)(ptr));
+
+    return ptr;
 }
 
 static inline void* FAL__T(_next_noskip)(void* ptr) {
@@ -499,19 +516,11 @@ static inline void* FAL__T(_next_noskip)(void* ptr) {
   size_t start = FAL__T(__ix_for)(ptr);
   size_t size = FAL__T(__size)(mark_bs, block_bs, *top, start);
 
-  if (start + size >= *top) {
+  if (start + size > *top) {
     return 0;
   }
 
   return FAL__T(__block)(arena, start + size);
-}
-
-static inline void* FAL__T(_next)(void* ptr) {
-    do {
-        ptr = FAL__T(_next_noskip)(ptr);
-    } while (ptr && !FAL__T(_used)(ptr));
-
-    return ptr;
 }
 
 #undef FAL__T

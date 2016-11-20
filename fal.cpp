@@ -13,7 +13,7 @@
 #define FAL_ARENA_DEF_BLOCK_POW 4u  /* 16 bytes*/
 #define FAL_ARENA_DEF_POW       16u /* 64 KiB */
 #define FAL_ARENA_DEF_NAME      fal_arena
-#include "fal/arena.h"
+#include "include/fal/arena.h"
 
 #define __VC_EXTRALEAN
 #include <Windows.h>
