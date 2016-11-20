@@ -30,14 +30,14 @@ int main(int argc, char* argv[]) {
     fal_arena_t* arena = (fal_arena_t*)mem;
     fal_arena_init(arena);
 
-    auto print_bitset = [&]() {
+    auto print_arena = [&]() {
         cout << (fal_arena_bumptop(arena) - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
             << "(starting at " << fal_arena_FIRST << "):\n\t";
 
         for (void* ptr = fal_arena_first(arena); ptr; ptr = fal_arena_next_noskip(ptr)) {
             bool used = fal_arena_used(ptr);
             bool marked = fal_arena_marked(ptr);
-            cout << (!used ? '.' : (marked ? 'M' : 'x'));
+            cout << (!used ? '.' : (marked ? 'x' : 'o'));
 
             for (int i = 0; i < fal_arena_size(ptr) - 1; i++) {
                 cout << (used ? '-' : '.');
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
         cout << endl;
     };
 
-    auto p = print_bitset;
+    auto p = print_arena;
 
     std::vector<int> sizes{ { 1, 15, 16, 17, 512, -2, 54, 76 } };
     std::vector<void*> allocations;
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
             void* x = fal_arena_alloc(arena, size);
             allocations.push_back(x);
         }
-        print_bitset();
+        print_arena();
     }
 
     std::vector<int> to_mark{ {1, 1, 3, 5, 7} };
@@ -70,8 +70,14 @@ int main(int argc, char* argv[]) {
         } else {
             fal_arena_mark(allocations[mark - 1]);
         }
-        print_bitset();
+        print_arena();
     }
+
+    fal_arena_mark_all(arena, 0);
+    print_arena();
+
+    fal_arena_mark_all(arena, 1);
+    print_arena();
 
     return 0;
 }

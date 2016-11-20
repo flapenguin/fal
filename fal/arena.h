@@ -4,6 +4,24 @@
 /*
   Generic arena with configurable arena size, block size and typename.
 
+  Compile-time parameters:
+    (req) FAL_ARENA_DEF_NAME      - prefix for resulting type and functions
+    (req) FAL_ARENA_DEF_ARENA_POW - power of arena size
+                                    (i.e. 16 means 64 KiB arena)
+    (req) FAL_ARENA_DEF_BLOCK_POW - power of block size
+                                    (i.e. 4 means 16 byte blocks)
+
+    (opt) FAL_ARENA_DEF_NO_UNDEF  - do not undefined all compile-time parameters
+
+  Compile-time constraints:
+    1. UnusedBits must be enough to store unsigned short (2 bytes).
+                            2 * ArenaSize
+          UnusedBits = ----------------------
+                       CHAR_BIT * BlockSize^2
+
+  Run-time constraints:
+    1. Arena must be aligned to it size.
+
   API:
     arena_ prefix is overriden by <FAL_ARENA_DEF_NAME>_.
     Everything with __ (two underscores) in name should be considered internal.
@@ -30,6 +48,8 @@
         unmark allocation
       int arena_marked(void*)
         check if allocation is marked
+      void arena_mark_all(arena_t*, int marked)
+        mark/unmark all blocks
 
     Querying:
       int arena_used(void*)
@@ -63,24 +83,6 @@
                             equals (arena_LAST - arena_FIRST)
       arena_USER_LO_BYTES - number of bytes available for user fata in LO place
       arena_USER_HI_BYTES - number of bytes available for user fata in HI place
-
-  Compile-time parameters:
-    (req) FAL_ARENA_DEF_NAME      - prefix for resulting type and functions
-    (req) FAL_ARENA_DEF_ARENA_POW - power of arena size
-                                    (i.e. 16 means 64 KiB arena)
-    (req) FAL_ARENA_DEF_BLOCK_POW - power of block size
-                                    (i.e. 4 means 16 byte blocks)
-
-    (opt) FAL_ARENA_DEF_NO_UNDEF  - do not undefined all compile-time parameters
-
-  Compile-time constraints:
-    1. UnusedBits must be enough for at least 2 bytes.
-                            2 * ArenaSize
-          UnusedBits = ----------------------
-                       CHAR_BIT * BlockSize^2
-
-  Run-time constraints:
-    1. Arena must be aligned to it size.
 
   Arena layout example is for 16 KiB arena with 16 byte blocks.
     XXXXYYYY MMMM~~~~MMMM ZZZZZZZZ BBBB~~~~BBBB OOOO~~~~OOOO
@@ -121,8 +123,12 @@
 extern "C" {
 #endif
 
-#if !defined(FAL_ARENA_DEF_BLOCK_POW) || !defined(FAL_ARENA_DEF_POW) || !defined(FAL_ARENA_DEF_NAME)
-#error FAL_ARENA_DEF_BLOCK_POW, FAL_ARENA_DEF_POW and FAL_ARENA_DEF_NAME must be defined.
+#if !defined(FAL_ARENA_DEF_BLOCK_POW) \
+  || !defined(FAL_ARENA_DEF_POW) \
+  || !defined(FAL_ARENA_DEF_NAME)
+#error FAL_ARENA: compile-time parameters \
+  FAL_ARENA_DEF_BLOCK_POW, FAL_ARENA_DEF_POW and FAL_ARENA_DEF_NAME \
+  must be defined.
 #endif
 
 #define FAL__T(X)               FAL_CONCAT(FAL_ARENA_DEF_NAME, X)
@@ -149,7 +155,7 @@ extern "C" {
 
 typedef struct FAL_ARENA_T FAL_ARENA_T;
 
-enum FAL_CONCAT(FAL_ARENA_T, _defs) {
+enum FAL__T(__defs) {
   FAL_ARENA__BLOCK_POW = FAL_ARENA_DEF_BLOCK_POW,
   FAL_ARENA__POW = FAL_ARENA_DEF_POW,
   FAL_ARENA_SIZE = 1u << FAL_ARENA__POW,
@@ -168,8 +174,49 @@ enum FAL_CONCAT(FAL_ARENA_T, _defs) {
   FAL_ARENA_USER_HI_BYTES = FAL_ARENA__UNUSED_BYTES
 };
 
+/******************************************************************************/
+/*                            FORWARD DECLARATION                             */
+/******************************************************************************/
+static inline void FAL__T(__asertions)();
+static inline int FAL__T(__ix_for)(void* ptr);
+static inline void* FAL__T(__block)(FAL_ARENA_T* arena, int ix);
+static inline void* FAL__T(__mark_bs)(FAL_ARENA_T* arena);
+static inline void* FAL__T(__block_bs)(FAL_ARENA_T* arena);
+static inline unsigned short* FAL__T(__top_ptr)(FAL_ARENA_T* arena);
+static inline void* FAL__T(__markalloc)(FAL_ARENA_T* arena, size_t start, size_t size);
+static inline int FAL__T(__is_guts)(void* mark_bs, void* block_bs, size_t ix);
+static inline int FAL__T(__is_start)(void* mark_bs, void* block_bs, size_t ix);
+static inline int FAL__T(__is_free)(void* mark_bs, void* block_bs, size_t ix);
+static inline size_t FAL__T(__size)(void* mark_bs, void* block_bs, size_t top, size_t start);
+
+static inline void FAL__T(_init)(FAL_ARENA_T* arena);
+
+static inline FAL_ARENA_T* FAL__T(_for)(void* ptr);
+static inline int FAL__T(_used)(void* ptr);
+static inline size_t FAL__T(_size)(void* ptr);
+static inline int FAL__T(_marked)(void* ptr);
+static inline unsigned int FAL__T(_bumptop)(FAL_ARENA_T* arena);
+static inline void* FAL__T(_user_lo)(FAL_ARENA_T* arena);
+static inline void* FAL__T(_user_hi)(FAL_ARENA_T* arena);
+
+static inline void* FAL__T(_bumpalloc)(FAL_ARENA_T* arena, size_t size);
+static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size);
+static inline void FAL__T(_free)(void* ptr);
+
+static inline void FAL__T(_mark)(void* ptr);
+static inline void FAL__T(_unmark)(void* ptr);
+static inline void FAL__T(_mark_all)(FAL_ARENA_T* arena, int mark);
+
+static inline void* FAL__T(_first)(FAL_ARENA_T* arena);
+static inline void* FAL__T(_next_noskip)(void* ptr);
+static inline void* FAL__T(_next)(void* ptr);
+
+/******************************************************************************/
+/*                                INTERNALS                                   */
+/******************************************************************************/
 static inline void FAL__T(__asertions)() {
-  /* Ensure there's enough unused bits at the beginning of each btiset to store additional data. */
+  /* Ensure there's enough unused bits at the beginning of each bitset
+     to store additional data. */
   FAL_STATIC_ASSERT(FAL_ARENA__UNUSED_BITS >= sizeof(unsigned short) * CHAR_BIT);
 
   /* Ensure bump allocation positions will wit in unsigned short */
@@ -409,6 +456,19 @@ static inline void FAL__T(_unmark)(void* ptr) {
   size_t start = FAL__T(__ix_for)(ptr);
   void* mark_bs = FAL__T(__mark_bs)(arena);
   fal_bitset_clear(mark_bs, start);
+}
+
+static inline void FAL__T(_mark_all)(FAL_ARENA_T* arena, int mark) {
+  assert(arena && "[" FAL_STR(FAL__T(_mark_all)) "] arena cannot be NULL");
+
+  // TODO: optimize, get bitsets here, make internal arena_mark and arena_next.
+  for (void* ptr = FAL__T(_first)(arena); ptr; ptr = FAL__T(_next)(ptr)) {
+    if (mark) {
+      FAL__T(_mark)(ptr);
+    } else {
+      FAL__T(_unmark)(ptr);
+    }
+  }
 }
 
 /******************************************************************************/
