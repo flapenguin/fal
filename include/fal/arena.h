@@ -380,6 +380,7 @@ static inline void* FAL__T(_bumpalloc)(FAL_ARENA_T* arena, size_t size) {
 static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size) {
   assert(size != 0 && "[" FAL_STR(FAL__T(_alloc)) "] size cannot be zero");
 
+  /* Try faster bumpalloc first. */
   void* mem = FAL__T(_bumpalloc)(arena, size);
   if (mem) {
     return mem;
