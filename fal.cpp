@@ -8,6 +8,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <string>
 
 #define FAL_ARENA_DEF_BLOCK_POW 4u  /* 16 bytes*/
 #define FAL_ARENA_DEF_POW       16u /* 64 KiB */
@@ -30,9 +31,16 @@ int main(int argc, char* argv[]) {
     fal_arena_t* arena = (fal_arena_t*)mem;
     fal_arena_init(arena);
 
+    strncpy((char*)fal_arena_user_lo(arena), "qwertyasdfghzxcvbn", fal_arena_USER_LO_BYTES);
+    strncpy((char*)fal_arena_user_hi(arena), "1234567890", fal_arena_USER_HI_BYTES);
+
     auto print_arena = [&]() {
         cout << (fal_arena_bumptop(arena) - fal_arena_FIRST) << "/" << fal_arena_TOTAL << " blocks"
-            << "(starting at " << fal_arena_FIRST << "):\n\t";
+            << "(starting at " << fal_arena_FIRST << ") "
+            << "lo=" << std::string((const char*)fal_arena_user_lo(arena), fal_arena_USER_LO_BYTES)
+            << " "
+            << "hi=" << std::string((const char*)fal_arena_user_hi(arena), fal_arena_USER_HI_BYTES)
+            << ":\n\t";
 
         for (void* ptr = fal_arena_first(arena); ptr; ptr = fal_arena_next_noskip(ptr)) {
             bool used = fal_arena_used(ptr);
@@ -47,7 +55,7 @@ int main(int argc, char* argv[]) {
         cout << endl;
     };
 
-    auto p = print_arena;
+    print_arena();
 
     std::vector<int> sizes{ { 1, 15, 16, 17, 512, -2, 54, 76 } };
     std::vector<void*> allocations;
