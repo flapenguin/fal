@@ -37,7 +37,7 @@ static inline void* testlib_alloc_arena(size_t size) {
 
 #else
 
-#error Dont know how to mmap on this system.
+#error Dont know how to alloc page on this system.
 
 #endif /* defined(_WIN32) */
 

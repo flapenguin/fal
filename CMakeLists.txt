@@ -24,20 +24,19 @@ macro(subdirlist result curdir)
 endmacro()
 
 subdirlist(suites "${CMAKE_CURRENT_SOURCE_DIR}/test")
-message("suites: ${suites}")
 foreach(suite ${suites})
   file(GLOB cases "${CMAKE_CURRENT_SOURCE_DIR}/test/${suite}/*.c")
 
   foreach(case ${cases})
     get_filename_component(case_name ${case} NAME)
     string(REGEX REPLACE ".c$" "" case_name ${case_name})
-    set(case_name "${suite}-${case_name}")
+    set(case_bin_name "${suite}-${case_name}")
 
-    add_executable(${case_name} ${case})
-    set_target_properties(${case_name}
-      PROPERTIES RUNTIME_OUTPUT_DIRECTORY "test/${suite}/")
+    add_executable(${case_bin_name} ${case})
+    set_target_properties(${case_bin_name}
+      PROPERTIES RUNTIME_OUTPUT_DIRECTORY "test/")
 
     add_test(NAME "${suite}/${case_name}"
-      COMMAND ${case_name})
+      COMMAND ${case_bin_name})
   endforeach()
 endforeach()

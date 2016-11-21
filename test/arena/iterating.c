@@ -39,7 +39,7 @@ int main() {
     void* third = arena_next(second);
     void* fourth = arena_next(third);
 
-    assert("iterating via arena_next()"
+    assert("iterating"
       && first == a && second == b && third == c && !fourth);
   }
 
@@ -49,15 +49,27 @@ int main() {
     void* third = arena_next_noskip(second);
     void* fourth = arena_next_noskip(third);
 
-    assert("iterating via arena_next_noskip()"
+    assert("iterating noskip"
       && first == a && second == b && third == c && !fourth);
   }
 
+  arena_free(a);
   {
-    arena_free(a);
-    assert("arena_first() must return first allocated block and skip freed ones"
-      && arena_first(arena) == b);
-    assert("arena_first_noskip() must always return first block even if freed"
-      && arena_first_noskip(arena) == a);
+    void* first = arena_first(arena);
+    void* second = arena_next(first);
+    void* third = arena_next(second);
+
+    assert("iterating after freeing"
+      && first == b && second == c && !third);
+  }
+
+  {
+    void* first = arena_first_noskip(arena);
+    void* second = arena_next_noskip(first);
+    void* third = arena_next_noskip(second);
+    void* fourth = arena_next_noskip(third);
+
+    assert("iterating noskip after freeing"
+      && first == a && second == b && third == c && !fourth);
   }
 }
