@@ -6,9 +6,13 @@ enable_testing()
 set_property(GLOBAL PROPERTY C_STANDARD 99)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-# MSVC cannot into proper C99.
 if(MSVC)
+  # MSVC cannot into proper C99.
   add_definitions(-Dinline=__inline)
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Wall")
+elseif(CMAKE_COMPILER_IS_GNUCC)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -Wextra")
 endif()
 
 # Tests are always debug.

@@ -268,6 +268,7 @@ static inline int FAL__T(__is_guts)(void* mark_bs, void* block_bs, size_t ix) {
 }
 
 static inline int FAL__T(__is_start)(void* mark_bs, void* block_bs, size_t ix) {
+  FAL_UNUSED(mark_bs);
   return fal_bitset_test(block_bs, ix);
 }
 
