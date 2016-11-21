@@ -445,10 +445,18 @@ static inline void FAL__T(_free)(void* ptr) {
     end++;
   }
 
-  /* Adjust dump allocation pointer. */
-  if (end >= *top) {
-    *top = start;
+  /* Adjust bump allocation pointer. */
+  if (end < *top) {
+    return;
   }
+
+  unsigned short new_top = start;
+  while (new_top > FAL_ARENA_FIRST
+    && FAL__T(__is_free)(mark_bs, block_bs, new_top - 1)) {
+    new_top--;
+  }
+
+  *top = new_top;
 }
 
 /******************************************************************************/

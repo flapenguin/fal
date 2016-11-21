@@ -62,9 +62,6 @@ int main() {
     assert(arena_bumptop(arena) == arena_FIRST + 8);
 
     arena_free(b);
-    if (false) {
-      /* TODO */
-      assert(arena_bumptop(arena) == arena_FIRST);
-    }
+    assert(arena_bumptop(arena) == arena_FIRST);
   }
 }
