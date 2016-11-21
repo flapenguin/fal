@@ -302,7 +302,13 @@ static inline size_t FAL__T(__size)(void* mark_bs, void* block_bs, size_t top, s
 static inline void FAL__T(_init)(FAL_ARENA_T* arena) {
   assert(((uintptr_t)arena & FAL_ARENA__BLOCK_MASK) == 0
     && "[" FAL_STR(FAL__T(_init)) "] arena is not aligned to its size");
-  memset(arena, 0, FAL_ARENA_FIRST * FAL_ARENA_BLOCK_SIZE);
+
+  char* mark_bs = FAL__T(__mark_bs)(arena);
+  char* block_bs = FAL__T(__block_bs)(arena);
+
+  memset(mark_bs + FAL_ARENA__UNUSED_BYTES, 0, FAL_ARENA__BITSET_SIZE - FAL_ARENA__UNUSED_BYTES);
+  memset(block_bs + FAL_ARENA__UNUSED_BYTES, 0, FAL_ARENA__BITSET_SIZE - FAL_ARENA__UNUSED_BYTES);
+
   *FAL__T(__top_ptr)(arena) = FAL_ARENA_FIRST;
 }
 
@@ -367,7 +373,7 @@ static inline void* FAL__T(_bumpalloc)(FAL_ARENA_T* arena, size_t size) {
   assert(size != 0 && "[" FAL_STR(FAL__T(_bumpalloc)) "] size cannot be zero");
   size = (size + FAL_ARENA_BLOCK_SIZE - 1) / FAL_ARENA_BLOCK_SIZE;
   unsigned short* top = FAL__T(__top_ptr)(arena);
-  if (*top + size >= FAL_ARENA__BLOCKS) {
+  if (*top + size > FAL_ARENA__BLOCKS) {
     return 0;
   }
 
@@ -497,11 +503,11 @@ static inline void* FAL__T(_first_noskip)(FAL_ARENA_T* arena) {
 }
 
 static inline void* FAL__T(_next)(void* ptr) {
-    do {
-        ptr = FAL__T(_next_noskip)(ptr);
-    } while (ptr && !FAL__T(_used)(ptr));
+  do {
+      ptr = FAL__T(_next_noskip)(ptr);
+  } while (ptr && !FAL__T(_used)(ptr));
 
-    return ptr;
+  return ptr;
 }
 
 static inline void* FAL__T(_next_noskip)(void* ptr) {
@@ -517,7 +523,7 @@ static inline void* FAL__T(_next_noskip)(void* ptr) {
   size_t start = FAL__T(__ix_for)(ptr);
   size_t size = FAL__T(__size)(mark_bs, block_bs, *top, start);
 
-  if (start + size > *top) {
+  if (start + size >= *top) {
     return 0;
   }
 

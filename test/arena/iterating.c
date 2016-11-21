@@ -29,6 +29,8 @@ int main() {
   void* b = arena_alloc(arena, arena_BLOCK_SIZE * 4);
   void* c = arena_alloc(arena, arena_BLOCK_SIZE * (arena_TOTAL - 8));
 
+  assert(a && b && c);
+
   assert("arena_first() and ~_noskip() must return same value if first block is allocated"
     && arena_first(arena) == arena_first_noskip(arena)
     && arena_first(arena) == a);

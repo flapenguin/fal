@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.1)
 
 project(fal)
-
 enable_testing()
+
 set_property(GLOBAL PROPERTY C_STANDARD 99)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
@@ -10,6 +10,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 if(MSVC)
   add_definitions(-Dinline=__inline)
 endif()
+
+# Tests are always debug.
+set(CMAKE_BUILD_TYPE Debug)
 
 # http://stackoverflow.com/questions/7787823/cmake-how-to-get-the-name-of-all-subdirectories-of-a-directory
 macro(subdirlist result curdir)

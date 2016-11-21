@@ -2,6 +2,7 @@
 #define __FAL_TEST_ARENA_TESTLIB_H__
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <assert.h>
 
 static inline void* testlib_alloc_arena(size_t size);
