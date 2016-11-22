@@ -35,6 +35,11 @@ void* y = arena_alloc(a, 37);
 
 arena_free(x);        /* free previously allocated memory */
 
+/* try to extend allocation to specified size, e.g. add 32 bytes */
+if (!arena_extend(x, arena_size(x) + 32)) {
+  printf("failed\n");
+}
+
 arena_mark(x);        /* set additional bit for allocation */
 arena_unmark(x);      /* clear additional bit for allocation */
 

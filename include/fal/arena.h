@@ -54,8 +54,10 @@
     Querying:
       int arena_used(void*)
         check if memory is allocated
+      size_t arena_bsize(void*)
+        get size in blocks of allocation
       size_t arena_size(void*)
-        get size (in blocks) of allocation
+        get size in bytes of allocation
       arena_t* arena_for(void*)
         get arena used to allocate passed memory
       unsigned int arena_bumptop(arena_t*)
@@ -187,16 +189,18 @@ static inline void* FAL__T(__mark_bs)(FAL_ARENA_T* arena);
 static inline void* FAL__T(__block_bs)(FAL_ARENA_T* arena);
 static inline unsigned short* FAL__T(__top_ptr)(FAL_ARENA_T* arena);
 static inline void* FAL__T(__markalloc)(FAL_ARENA_T* arena, size_t start, size_t size);
+static inline void FAL__T(__adjust_bumptop)(void* mark_bs, void* block_bs, unsigned short* top, size_t oldend, size_t end);
 static inline int FAL__T(__is_guts)(void* mark_bs, void* block_bs, size_t ix);
 static inline int FAL__T(__is_start)(void* mark_bs, void* block_bs, size_t ix);
 static inline int FAL__T(__is_free)(void* mark_bs, void* block_bs, size_t ix);
-static inline size_t FAL__T(__size)(void* mark_bs, void* block_bs, size_t top, size_t start);
+static inline size_t FAL__T(__bsize)(void* mark_bs, void* block_bs, size_t top, size_t start);
 
 static inline void FAL__T(_init)(FAL_ARENA_T* arena);
 
 static inline FAL_ARENA_T* FAL__T(_for)(void* ptr);
 static inline int FAL__T(_used)(void* ptr);
 static inline size_t FAL__T(_size)(void* ptr);
+static inline size_t FAL__T(_bsize)(void* ptr);
 static inline int FAL__T(_marked)(void* ptr);
 static inline unsigned int FAL__T(_bumptop)(FAL_ARENA_T* arena);
 static inline void* FAL__T(_user_lo)(FAL_ARENA_T* arena);
@@ -204,6 +208,7 @@ static inline void* FAL__T(_user_hi)(FAL_ARENA_T* arena);
 
 static inline void* FAL__T(_bumpalloc)(FAL_ARENA_T* arena, size_t size);
 static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size);
+static inline int FAL__T(_extend)(void* ptr, size_t size);
 static inline void FAL__T(_free)(void* ptr);
 
 static inline void FAL__T(_mark)(void* ptr);
@@ -276,7 +281,7 @@ static inline int FAL__T(__is_free)(void* mark_bs, void* block_bs, size_t ix) {
   return !fal_bitset_test(mark_bs, ix) && !fal_bitset_test(block_bs, ix);
 }
 
-static inline size_t FAL__T(__size)(void* mark_bs, void* block_bs, size_t top, size_t start) {
+static inline size_t FAL__T(__bsize)(void* mark_bs, void* block_bs, size_t top, size_t start) {
   size_t end = start + 1;
   if (FAL__T(__is_free)(mark_bs, block_bs, start)) {
     while (end < top && FAL__T(__is_free)(mark_bs, block_bs, end)) {
@@ -331,8 +336,8 @@ static inline int FAL__T(_used)(void* ptr) {
   return !FAL__T(__is_free)(mark_bs, block_bs, ix);
 }
 
-static inline size_t FAL__T(_size)(void* ptr) {
-  assert(ptr && "[" FAL_STR(FAL__T(_size)) "] ptr cannot be NULL");
+static inline size_t FAL__T(_bsize)(void* ptr) {
+  assert(ptr && "[" FAL_STR(FAL__T(_bsize)) "] ptr cannot be NULL");
 
   FAL_ARENA_T* arena = FAL__T(_for)(ptr);
   unsigned short top = *FAL__T(__top_ptr)(arena);
@@ -341,7 +346,11 @@ static inline size_t FAL__T(_size)(void* ptr) {
 
   size_t ix = FAL__T(__ix_for)(ptr);
 
-  return FAL__T(__size)(mark_bs, block_bs, top, ix);
+  return FAL__T(__bsize)(mark_bs, block_bs, top, ix);
+}
+
+static inline size_t FAL__T(_size)(void* ptr) {
+  return FAL__T(_bsize)(ptr) * FAL_ARENA_BLOCK_SIZE;
 }
 
 static inline int FAL__T(_marked)(void* ptr) {
@@ -421,6 +430,62 @@ static inline void* FAL__T(_alloc)(FAL_ARENA_T* arena, size_t size) {
   return FAL__T(__markalloc)(arena, start, size);
 }
 
+static inline int FAL__T(_extend)(void* ptr, size_t newsize) {
+  assert(newsize && "[" FAL_STR(FAL__T(_extend)) "] newsize cannot be 0");
+  newsize = (newsize + FAL_ARENA_BLOCK_SIZE - 1) / FAL_ARENA_BLOCK_SIZE;
+
+  FAL_ARENA_T* arena = FAL__T(_for)(ptr);
+  void* mark_bs = FAL__T(__mark_bs)(arena);
+  void* block_bs = FAL__T(__block_bs)(arena);
+  unsigned short* top = FAL__T(__top_ptr)(arena);
+
+  size_t start = FAL__T(__ix_for)(ptr);
+  size_t oldsize = FAL__T(__bsize)(mark_bs, block_bs, *top, start);
+
+  /* Leaving allocation as is. */
+  if (newsize == oldsize) {
+    return 1;
+  }
+
+  size_t oldend = start + oldsize;
+  size_t newend = start + newsize;
+
+  /* Shrinking allocation. */
+  if (newsize < oldsize) {
+    for (size_t ix = newend; ix < oldend; ix++) {
+      fal_bitset_clear(mark_bs, ix);
+      fal_bitset_clear(block_bs, ix);
+    }
+
+    FAL__T(__adjust_bumptop)(mark_bs, block_bs, top, oldend, newend);
+
+    return 1;
+  }
+
+  /* Extending allocation. */
+
+  /* Definetely not enough place. */
+  if (newend > FAL_ARENA_LAST) {
+    return 0;
+  }
+
+  /* Check if there not enough free blocks for extension. */
+  for (size_t ix = oldend; ix < newend; ix++) {
+    if (!FAL__T(__is_free)(mark_bs, block_bs, ix)) {
+      return 0;
+    }
+  }
+
+  for (size_t ix = oldend; ix < newend; ix++) {
+    fal_bitset_clear(block_bs, ix);
+    fal_bitset_set(mark_bs, ix);
+  }
+
+  FAL__T(__adjust_bumptop)(mark_bs, block_bs, top, oldend, newend);
+
+  return 1;
+}
+
 static inline void FAL__T(_free)(void* ptr) {
   if (!ptr) {
     return;
@@ -446,12 +511,24 @@ static inline void FAL__T(_free)(void* ptr) {
     end++;
   }
 
-  /* Adjust bump allocation pointer. */
   if (end < *top) {
     return;
   }
 
-  unsigned short new_top = start;
+  FAL__T(__adjust_bumptop)(mark_bs, block_bs, top, *top, end);
+}
+
+static inline void FAL__T(__adjust_bumptop)(void* mark_bs, void* block_bs, unsigned short* top, size_t oldend, size_t end) {
+  if (oldend < *top) {
+    return;
+  }
+
+  if (end > *top) {
+    *top = end;
+    return;
+  }
+
+  unsigned short new_top = end;
   while (new_top > FAL_ARENA_FIRST
     && FAL__T(__is_free)(mark_bs, block_bs, new_top - 1)) {
     new_top--;
@@ -485,7 +562,7 @@ static inline void FAL__T(_unmark)(void* ptr) {
 static inline void FAL__T(_mark_all)(FAL_ARENA_T* arena, int mark) {
   assert(arena && "[" FAL_STR(FAL__T(_mark_all)) "] arena cannot be NULL");
 
-  // TODO: optimize, get bitsets here, make internal arena_mark and arena_next.
+  /* TODO: optimize, get bitsets here, make internal arena_mark and arena_next. */
   for (void* ptr = FAL__T(_first)(arena); ptr; ptr = FAL__T(_next)(ptr)) {
     if (mark) {
       FAL__T(_mark)(ptr);
@@ -530,7 +607,7 @@ static inline void* FAL__T(_next_noskip)(void* ptr) {
   void* block_bs = FAL__T(__block_bs)(arena);
 
   size_t start = FAL__T(__ix_for)(ptr);
-  size_t size = FAL__T(__size)(mark_bs, block_bs, *top, start);
+  size_t size = FAL__T(__bsize)(mark_bs, block_bs, *top, start);
 
   if (start + size >= *top) {
     return 0;

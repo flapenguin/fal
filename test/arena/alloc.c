@@ -41,7 +41,7 @@ int main() {
     arena_init(arena);
 
     void* a = arena_alloc(arena, arena_BLOCK_SIZE * 4);
-    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 4);;
+    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 4);
     assert(a && b);
 
     arena_free(b);
@@ -55,7 +55,7 @@ int main() {
     arena_init(arena);
 
     void* a = arena_alloc(arena, arena_BLOCK_SIZE * 4);
-    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 4);;
+    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 4);
     assert(a && b);
 
     arena_free(a);
@@ -63,5 +63,50 @@ int main() {
 
     arena_free(b);
     assert(arena_bumptop(arena) == arena_FIRST);
+  }
+
+  {
+    arena_init(arena);
+    void* a = arena_alloc(arena, arena_BLOCK_SIZE * 4 - 1);
+    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 8);
+    assert(a && b);
+
+    assert(arena_extend(a, arena_BLOCK_SIZE * 4));
+    assert(arena_bsize(a) == 4);
+
+    assert(arena_extend(a, arena_BLOCK_SIZE * 2));
+    assert(arena_bsize(a) == 2);
+
+    assert(arena_extend(b, arena_BLOCK_SIZE * 4));
+    assert(arena_bsize(b) == 4);
+
+    assert(arena_bumptop(arena) == arena_FIRST + 8);
+
+    arena_free(b);
+    assert(arena_bumptop(arena) == arena_FIRST + 2);
+  }
+
+  {
+    arena_init(arena);
+    void* a = arena_alloc(arena, arena_BLOCK_SIZE);
+    assert(a && arena_size(a) == arena_BLOCK_SIZE && arena_bumptop(arena) == arena_FIRST + 1);
+
+    assert(!arena_extend(a, arena_SIZE));
+
+    assert(arena_extend(a, arena_BLOCK_SIZE * 16 - 1));
+    assert(arena_bsize(a) == 16 && arena_bumptop(arena) == arena_FIRST + 16);
+
+    void* b = arena_alloc(arena, arena_BLOCK_SIZE * 16);
+    void* c = arena_alloc(arena, arena_BLOCK_SIZE * 16);
+    assert(b && c && arena_bumptop(arena) == arena_FIRST + 48);
+
+    arena_free(b);
+    assert(arena_extend(a, arena_BLOCK_SIZE * 24));
+    assert(arena_bsize(a) == 24 && arena_bumptop(arena) == arena_FIRST + 48);
+
+    assert(arena_extend(a, arena_BLOCK_SIZE * 32));
+    assert(arena_bsize(a) == 32 && arena_bumptop(arena) == arena_FIRST + 48);
+
+    assert(!arena_extend(a, arena_size(a) + 1));
   }
 }
