@@ -15,9 +15,9 @@ Can store additional bit per allocation called `mark`.
 See header comment in `fal/arena.h` for docs.
 
 Samples:
-- `arena-gc`: mark&sweep and semispace garbage collectors.
+- `arena-gc`: mark&sweep, mark&compact and semispace garbage collectors.
 
-Based on [LuaJIT arenas](http://wiki.luajit.org/New-Garbage-Collector#arenas).
+Based on ideas from [LuaJIT arenas](http://wiki.luajit.org/New-Garbage-Collector#arenas).
 
 Essentials:
 ```c
@@ -45,11 +45,11 @@ if (!arena_extend(x, arena_size(x) + 32)) {
   printf("failed\n");
 }
 
-arena_mark(x);        /* set additional bit for allocation */
-arena_unmark(x);      /* clear additional bit for allocation */
+arena_mark(x);        /* set additional mark bit for allocation */
+arena_unmark(x);      /* clear additional mark bit for allocation */
 
-arena_mark_all(a, 1); /* set bit for all allocations */
-arena_mark_all(a, 0); /* clear bit for all allocations */
+arena_mark_all(a, 1); /* set mark bit for all allocations */
+arena_mark_all(a, 0); /* clear mark bit for all allocations */
 
 /* iterate through allocations */
 for (void* p = arena_first(a); p; p = arena_next(p)) {

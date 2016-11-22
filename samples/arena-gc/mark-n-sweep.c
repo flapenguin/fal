@@ -14,7 +14,7 @@ int main() {
     alloc_objs(space, objs, FAL_ARRLEN(objs));
 
     /* Set root. */
-    root = objs[0];
+    root = objs[1];
   }
 
   /* Mark phase */ {

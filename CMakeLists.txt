@@ -37,7 +37,7 @@ foreach(suite ${suites})
   foreach(case ${cases})
     get_filename_component(case_name ${case} NAME)
     string(REGEX REPLACE ".c$" "" case_name ${case_name})
-    set(case_bin_name "test-${suite}-${case_name}")
+    set(case_bin_name "${suite}-${case_name}")
 
     add_executable(${case_bin_name} ${case})
     set_target_properties(${case_bin_name}

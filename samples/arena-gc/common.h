@@ -30,13 +30,26 @@ typedef struct object_t object_t;
 struct object_t {
   int id;
   struct object_t* next;
+
+#ifdef NEWPOS
+  void* newpos;
+#endif
 };
 
 static void print_objs(space_t* space) {
   for (object_t* obj = space_first_noskip(space); obj; obj = space_next_noskip(obj)) {
     if (space_used(obj)) {
-      printf("  @%p: id:%#-2x next:%p%s\n", (void*)obj, obj->id, (void*)obj->next,
-        space_marked(obj) ? " (marked)" : "");
+      printf("  @%p: id:%#-2x next:%p", (void*)obj, obj->id, (void*)obj->next);
+      if (obj->next) {
+        printf("(id:%#-2x)", obj->next->id);
+      }
+      if (space_marked(obj)) {
+        printf(" (marked)");
+      }
+#ifdef NEWPOS
+      printf(" will be %p", obj->newpos);
+#endif
+      printf("\n");
     } else {
       printf("  @%p %zu empty bytes\n", (void*)obj, space_size(obj));
     }
