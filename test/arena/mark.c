@@ -9,7 +9,7 @@ int main() {
   arena_t* arena = (arena_t*)testlib_alloc_arena(arena_SIZE);
 
   arena_init(arena);
-  assert(arena_bumptop(arena) == arena_FIRST);
+  assert(arena_bumptop(arena) == arena_BEGIN);
 
   void* p[] = {
     arena_bumpalloc(arena, 64),
@@ -22,7 +22,7 @@ int main() {
   void *a = p[0], *b = p[1], *c = p[2], *d = p[3], *e = p[4];
 
   assert(a && b && c && d && e);
-  assert(arena_bumptop(arena) == arena_LAST);
+  assert(arena_bumptop(arena) == arena_END);
 
   for (int i = 0; i < (int)FAL_ARRLEN(p); i++) {
     assert(!arena_marked(p[i]));

@@ -15,7 +15,7 @@ int main() {
   assert("arena_next_noskip(NULL) must return NULL" && !arena_next_noskip(0));
 
   assert("arena_first_noskip() must return first block of empty arena"
-    && arena_first_noskip(arena) == ((char*)arena + arena_FIRST*arena_BLOCK_SIZE));
+    && arena_first_noskip(arena) == ((char*)arena + arena_BEGIN*arena_BLOCK_SIZE));
   assert("arena_bsize(arena_first_noskip()) must return arena_TOTAL"
     && arena_bsize(arena_first_noskip(arena)) == arena_TOTAL);
 
