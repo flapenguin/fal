@@ -1,3 +1,8 @@
+/* Copyright (c) 2016 Andrey Roenko
+ * This file is part of fal project which is released under MIT license.
+ * See file LICENSE or go to https://opensource.org/licenses/MIT for full
+ * license details.
+*/
 #ifndef __FAL_ARENA_H__
 #define __FAL_ARENA_H__
 

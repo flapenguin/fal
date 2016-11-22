@@ -1,9 +1,10 @@
+/* Copyright (c) 2016 Andrey Roenko
+ * This file is part of fal project which is released under MIT license.
+ * See file LICENSE or go to https://opensource.org/licenses/MIT for full
+ * license details.
+*/
 #ifndef __FAL_UTILS_H__
 #define __FAL_UTILS_H__
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define FAL__CONCAT(A, B) A ## B
 #define FAL_CONCAT(A, B) FAL__CONCAT(A, B)
@@ -16,9 +17,5 @@ extern "C" {
 
 #define FAL_STATIC_ASSERT(Condition) \
     ((void) sizeof(char[1 - 2*!(Condition)]) )
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __FAL_UTILS_H__ */
