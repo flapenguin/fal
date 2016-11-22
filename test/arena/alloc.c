@@ -109,4 +109,19 @@ int main() {
 
     assert(!arena_extend(a, arena_size(a) + 1));
   }
+
+  {
+    arena_init(arena);
+
+    char* start = arena_first_noskip(arena);
+    arena_emplace(start, 31);
+    arena_emplace(start + 32, 47);
+    arena_emplace_end(start + 32 + 48);
+
+    assert(arena_bumptop(arena) == arena_BEGIN + 5);
+    assert(arena_size(start) == 32);
+    assert(arena_next(start) == start + 32);
+    assert(arena_size(arena_next(start)) == 48);
+    assert(!arena_next(arena_next(start)));
+  }
 }

@@ -43,6 +43,16 @@
       void arena_free(void*)
         frees passed allocation
 
+      void arena_emplace(void*, size_t)
+        forcely make allocation of specified size in specified location without
+        any assertions
+        previously made allocations which intersect with passed pointer should
+        be considered invalid
+        usefull if you want to move data around, e.g. shift it to start of arena
+      void arena_emplace_end(void*)
+        forcely set end of all allocations, all blocks starting at passed pointer
+        will be considered freed/unused
+
     Marking:
       void arena_mark(void*)
         mark allocarion
@@ -216,6 +226,8 @@ static inline void* FAL__PUB(bumpalloc)(FAL__T* arena, size_t size);
 static inline void* FAL__PUB(alloc)(FAL__T* arena, size_t size);
 static inline int FAL__PUB(extend)(void* ptr, size_t size);
 static inline void FAL__PUB(free)(void* ptr);
+static inline void FAL__PUB(emplace)(void* where, size_t size);
+static inline void FAL__PUB(emplace_end)(void* where);
 
 static inline void FAL__PUB(mark)(void* ptr);
 static inline void FAL__PUB(unmark)(void* ptr);
@@ -437,6 +449,22 @@ static inline void* FAL__PUB(alloc)(FAL__T* arena, size_t size) {
   }
 
   return FAL__INT(markalloc)(arena, start, size);
+}
+
+static inline void FAL__PUB(emplace)(void* where, size_t size) {
+  FAL__T* arena = FAL__PUB(for)(where);
+  size_t start = FAL__INT(ix_for)(where);
+
+  size = (size + FAL_ARENA_BLOCK_SIZE - 1) / FAL_ARENA_BLOCK_SIZE;
+
+  FAL__INT(markalloc)(arena, start, size);
+}
+
+static inline void FAL__PUB(emplace_end)(void* where) {
+  FAL__T* arena = FAL__PUB(for)(where);
+  size_t ix = FAL__INT(ix_for)(where);
+
+  *FAL__INT(top_ptr)(arena) = ix;
 }
 
 static inline int FAL__PUB(extend)(void* ptr, size_t newsize) {
