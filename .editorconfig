@@ -1,6 +1,6 @@
 root = true
 
-[*.{c,h}]
+[{*.{c,h}, CMakeLists.txt}]
 indent_style = space
 indent_size = 2
 insert_final_newline = true
