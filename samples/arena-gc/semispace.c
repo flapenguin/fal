@@ -1,7 +1,7 @@
 #include "common.h"
 
 int main() {
-  printf("Sample semispace garbage collector from fal/arena.h.\n");
+  printf("Sample semispace garbage collector based on fal/arena.h.\n");
 
   space_t* oldspace = mkspace();
   space_t* newspace = mkspace();

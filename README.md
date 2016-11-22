@@ -3,6 +3,8 @@
 This is header-only library.
 Just add `include` directory to you include path and enjoy.
 
+If you want run _tests_ or build _samples_ you'll need `cmake`.
+
 ## `fal/arena.h`
 Generic arena, i.e. memory block aligned to its size split into small blocks
 available for allocation. Because arena is aligned to its size arena's address
@@ -12,9 +14,12 @@ Can store additional bit per allocation called `mark`.
 
 See header comment in `fal/arena.h` for docs.
 
+Samples:
+- `arena-gc`: mark&sweep and semispace garbage collectors.
+
 Based on [LuaJIT arenas](http://wiki.luajit.org/New-Garbage-Collector#arenas).
 
-Basic usage:
+Essentials:
 ```c
 #define FAL_ARENA_DEF_NAME      arena /* prefix */
 #define FAL_ARENA_DEF_POW       16u   /* 64 KiB arena */
@@ -80,9 +85,3 @@ putchar(fal_bitset_test(bs, 42) ? 'x' : 'o') /* check if bit #42 is set */
 /* fail compilation if condition is not met */
 FAL_STATIC_ASSERT(some_enum_constant >= sizeof(unsigned short));
 ```
-
-## Running tests
-1. `cd build`
-2. `cmake path/to/fal` (specify any options you need)
-3. `make`
-4. `ctest`

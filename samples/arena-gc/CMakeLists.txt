@@ -11,4 +11,5 @@ elseif(CMAKE_COMPILER_IS_GNUCC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -Wextra")
 endif()
 
+add_executable(mark-n-sweep-gc mark-n-sweep.c)
 add_executable(semispace-gc semispace.c)
