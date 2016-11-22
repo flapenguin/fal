@@ -62,7 +62,7 @@
         get size in bytes of allocation
       arena_t* arena_for(void*)
         get arena used to allocate passed memory
-      unsigned int arena_bumptop(arena_t*)
+      size_t arena_bumptop(arena_t*)
         get bump allocator position (between arena_BEGIN and arena_END)
         no blocks are allocated above this position
       void* arena_user_hi(arena_t*)
@@ -330,7 +330,6 @@ static inline void FAL__PUB(init)(FAL__T* arena) {
 /******************************************************************************/
 /*                                  QUERYING                                  */
 /******************************************************************************/
-
 static inline FAL__T* FAL__PUB(for)(void* ptr) {
   return (FAL__T*)( ((uintptr_t)ptr) & FAL_ARENA__MASK );
 }
@@ -620,7 +619,7 @@ static inline void* FAL__PUB(next_noskip)(void* ptr) {
   size_t start = FAL__INT(ix_for)(ptr);
   size_t size = FAL__INT(bsize)(mark_bs, block_bs, *top, start);
 
-  if (start + size >= *top) {
+  if (start + size >= FAL_ARENA_END) {
     return 0;
   }
 

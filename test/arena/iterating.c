@@ -56,13 +56,13 @@ int main() {
   }
 
   arena_free(a);
+  arena_free(c);
   {
     void* first = arena_first(arena);
     void* second = arena_next(first);
-    void* third = arena_next(second);
 
     assert("iterating after freeing"
-      && first == b && second == c && !third);
+      && first == b && !second);
   }
 
   {
