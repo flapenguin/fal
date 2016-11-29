@@ -26,14 +26,18 @@ int main() {
   }
 
   /* Calculate new positions for marked objects */ {
-    char* newpos = space_first_noskip(space);
+    char* newpos = space_mem_start(space);
     for (object_t* obj = space_first(space); obj; obj = space_next(obj)) {
       if (!space_marked(obj)) {
         continue;
       }
 
       obj->newpos = newpos;
-      newpos += space_size(obj);
+      size_t obj_size = space_size(obj);
+
+      assert(newpos < (char*)space_mem_end(space) && "arena overflow");
+
+      newpos += obj_size;
     }
   }
 

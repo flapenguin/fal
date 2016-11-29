@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
+#include "../assertlib.h"
 
 static inline void* testlib_alloc_arena(size_t size);
 

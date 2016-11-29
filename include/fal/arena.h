@@ -17,14 +17,18 @@
                                     (i.e. 4 means 16 byte blocks)
     (opt) FAL_ARENA_DEF_HEADER_SIZE - default: 0; size for header stored at
                                       the start of the efective blocks of arena
+    (opt) FAL_ARENA_DEF_INCOMPACT - store internal data in the effective blocks,
+                                    not in the unused part of bitset
 
     (opt) FAL_ARENA_DEF_NO_UNDEF  - do not undefined all compile-time parameters
 
   Compile-time constraints:
-    1. UnusedBits must be enough to store unsigned short (2 bytes).
+    1. FAL_ARENA_DEF_INCOMPACT must be defined or UnusedBits must be enough to
+       store unsigned short (2 bytes).
                             2 * ArenaSize
           UnusedBits = ----------------------
                        CHAR_BIT * BlockSize^2
+
 
   Run-time constraints:
     1. Arena must be aligned to it size.
@@ -88,6 +92,17 @@
         access lo user memory, see arena_USER_LO_BYTES
       void* arena_header(arena_t*)
         assess arena_HEADER_SIZE bytes at the start of arena
+      int arena_can_belong(void*)
+        checks if memory can possibly belong to arena, i.e. it doesn't lay
+        in potential internal service memory (e.g. bitsets)
+        for example, 0x10000 cannot belong to 4KiB arena because it will point
+        to its internal structures
+      int arena_empty(arena_t*)
+        checks if arena is empty
+      void* arena_mem_start(arena_t*)
+        get address of first byte, which can be used for allocation
+      void* arena_mem_end(arena_t*)
+        get address of byte next to last byte, which can be used for allocation
 
     Iterating:
       void* arena_first(arena_t*)
@@ -100,15 +115,16 @@
         get next allocation, including freed blocks (use arena_used)
 
     Constants:
-      arena_SIZE          - arena size in bytes
-      arena_BLOCK_SIZE    - block size in bytes
-      arena_BEGIN         - id of first block available for allocation
-      arena_END           - id of last block available for allocation
-      arena_TOTAL         - nubmer of blocks available for allocation
-                            equals (arena_END - arena_BEGIN)
-      arena_USER_LO_BYTES - number of bytes available for user fata in LO place
-      arena_USER_HI_BYTES - number of bytes available for user fata in HI place
-      arena_HEADER_SIZE   - number of bytes used for header
+      arena_SIZE           - arena size in bytes
+      arena_EFFECTIVE_SIZE - effective size available for allocation
+      arena_BLOCK_SIZE     - block size in bytes
+      arena_BEGIN          - id of first block available for allocation
+      arena_END            - id of last block available for allocation
+      arena_TOTAL          - nubmer of blocks available for allocation
+                             equals (arena_END - arena_BEGIN)
+      arena_USER_LO_BYTES  - number of bytes available for user fata in LO place
+      arena_USER_HI_BYTES  - number of bytes available for user fata in HI place
+      arena_HEADER_SIZE    - number of bytes used for header
 
   Arena layout example is for 16 KiB arena with 16 byte blocks.
     XXXXYYYY MMMM~~~~MMMM ZZZZZZZZ BBBB~~~~BBBB OOOO~~~~OOOO
@@ -163,27 +179,30 @@ extern "C" {
 #define FAL__INT(X)             FAL_CONCAT(FAL_ARENA_DEF_NAME, FAL_CONCAT(__, X))
 
 /* Public */
-#define FAL__T                  FAL__PUB(t)
+#define FAL__T                      FAL__PUB(t)
 
-#define FAL_ARENA_TOTAL         FAL__PUB(TOTAL)
-#define FAL_ARENA_SIZE          FAL__PUB(SIZE)
-#define FAL_ARENA_BLOCK_SIZE    FAL__PUB(BLOCK_SIZE)
-#define FAL_ARENA_BEGIN         FAL__PUB(BEGIN)
-#define FAL_ARENA_END           FAL__PUB(END)
-#define FAL_ARENA_USER_LO_BYTES FAL__PUB(USER_LO_BYTES)
-#define FAL_ARENA_USER_HI_BYTES FAL__PUB(USER_HI_BYTES)
-#define FAL_ARENA_HEADER_SIZE   FAL__PUB(HEADER_SIZE)
+#define FAL_ARENA_TOTAL             FAL__PUB(TOTAL)
+#define FAL_ARENA_SIZE              FAL__PUB(SIZE)
+#define FAL_ARENA_EFFECTIVE_SIZE    FAL__PUB(EFFECTIVE_SIZE)
+#define FAL_ARENA_BLOCK_SIZE        FAL__PUB(BLOCK_SIZE)
+#define FAL_ARENA_BEGIN             FAL__PUB(BEGIN)
+#define FAL_ARENA_END               FAL__PUB(END)
+#define FAL_ARENA_USER_LO_BYTES     FAL__PUB(USER_LO_BYTES)
+#define FAL_ARENA_USER_HI_BYTES     FAL__PUB(USER_HI_BYTES)
 /* Internal */
-#define FAL_ARENA__BLOCK_POW    FAL__INT(BLOCK_POW)
-#define FAL_ARENA__POW          FAL__INT(POW)
-#define FAL_ARENA__BLOCKS       FAL__INT(BLOCKS)
-#define FAL_ARENA__BITSET_SIZE  FAL__INT(BITSET_SIZE)
-#define FAL_ARENA__BLOCK_MASK   FAL__INT(BLOCK_MASK)
-#define FAL_ARENA__MASK         FAL__INT(MASK)
-#define FAL_ARENA__UNUSED_BITS  FAL__INT(UNUSED_BITS)
-#define FAL_ARENA__UNUSED_BYTES FAL__INT(UNUSED_BYTES)
-#define FAL_ARENA__HEADER_BLOCKS FAL__INT(HEADER_BLOCKS)
-#define FAL_ARENA__HEADER_BEGIN FAL__INT(HEADER_BEGIN)
+#define FAL_ARENA__BLOCK_POW        FAL__INT(BLOCK_POW)
+#define FAL_ARENA__POW              FAL__INT(POW)
+#define FAL_ARENA__BLOCKS           FAL__INT(BLOCKS)
+#define FAL_ARENA__BITSET_SIZE      FAL__INT(BITSET_SIZE)
+#define FAL_ARENA__BLOCK_MASK       FAL__INT(BLOCK_MASK)
+#define FAL_ARENA__MASK             FAL__INT(MASK)
+#define FAL_ARENA__UNUSED_BITS      FAL__INT(UNUSED_BITS)
+#define FAL_ARENA__UNUSED_BYTES     FAL__INT(UNUSED_BYTES)
+
+#define FAL_ARENA__HEADER_TOP_SIZE  FAL__INT(BUMPTOP_SIZE)
+#define FAL_ARENA__HEADER_BLOCKS    FAL__INT(HEADER_BLOCKS)
+#define FAL_ARENA__HEADER_BEGIN     FAL__INT(HEADER_BEGIN)
+#define FAL_ARENA__HEADER_SIZE      FAL__INT(HEADER_SIZE)
 
 typedef struct FAL__T FAL__T;
 
@@ -193,28 +212,41 @@ enum FAL__INT(defs) {
   FAL_ARENA_SIZE = 1u << FAL_ARENA__POW,
   FAL_ARENA_BLOCK_SIZE = 1u << FAL_ARENA__BLOCK_POW,
 
-  FAL_ARENA__HEADER_BLOCKS =
-#ifdef FAL_ARENA_DEF_HEADER_SIZE
-    (FAL_ARENA_DEF_HEADER_SIZE + FAL_ARENA_BLOCK_SIZE - 1) / FAL_ARENA_BLOCK_SIZE,
+#ifdef FAL_ARENA_DEF_INCOMPACT
+  FAL_ARENA__HEADER_TOP_SIZE = sizeof(unsigned short),
 #else
-    0,
+  FAL_ARENA__HEADER_TOP_SIZE = 0,
 #endif
 
-  FAL_ARENA_HEADER_SIZE = FAL_ARENA__HEADER_BLOCKS * FAL_ARENA_BLOCK_SIZE,
+#ifdef FAL_ARENA_DEF_HEADER_SIZE
+  FAL_ARENA__HEADER_SIZE = FAL_ARENA__HEADER_TOP_SIZE + FAL_ARENA_DEF_HEADER_SIZE,
+#else
+  FAL_ARENA__HEADER_SIZE = FAL_ARENA__HEADER_TOP_SIZE,
+#endif
 
   FAL_ARENA__BLOCKS = FAL_ARENA_SIZE / FAL_ARENA_BLOCK_SIZE,
   FAL_ARENA__BITSET_SIZE = FAL_ARENA__BLOCKS / CHAR_BIT,
   FAL_ARENA__BLOCK_MASK = FAL_ARENA_SIZE - 1,
   FAL_ARENA__MASK = ~FAL_ARENA__BLOCK_MASK,
 
+  FAL_ARENA__HEADER_BLOCKS = (FAL_ARENA__HEADER_SIZE + FAL_ARENA_BLOCK_SIZE - 1)
+    / FAL_ARENA_BLOCK_SIZE,
   FAL_ARENA__HEADER_BEGIN = 2 *   FAL_ARENA__BITSET_SIZE / FAL_ARENA_BLOCK_SIZE,
+
   FAL_ARENA_BEGIN = FAL_ARENA__HEADER_BEGIN + FAL_ARENA__HEADER_BLOCKS,
   FAL_ARENA_END = FAL_ARENA__BLOCKS,
   FAL_ARENA_TOTAL = FAL_ARENA__BLOCKS - FAL_ARENA_BEGIN,
   FAL_ARENA__UNUSED_BITS = FAL_ARENA_BEGIN,
   FAL_ARENA__UNUSED_BYTES = FAL_ARENA__UNUSED_BITS / CHAR_BIT,
 
+  FAL_ARENA_EFFECTIVE_SIZE = FAL_ARENA_TOTAL * FAL_ARENA_BLOCK_SIZE,
+
+#ifdef FAL_ARENA_DEF_INCOMPACT
+  FAL_ARENA_USER_LO_BYTES = FAL_ARENA__UNUSED_BYTES,
+#else
   FAL_ARENA_USER_LO_BYTES = FAL_ARENA__UNUSED_BYTES - sizeof(unsigned short),
+#endif
+
   FAL_ARENA_USER_HI_BYTES = FAL_ARENA__UNUSED_BYTES
 };
 
@@ -267,9 +299,11 @@ static inline void* FAL__PUB(next_noskip)(void* ptr);
 /*                                INTERNALS                                   */
 /******************************************************************************/
 static inline void FAL__INT(asertions)() {
+#ifndef FAL_ARENA_DEF_INCOMPACT
   /* Ensure there's enough unused bits at the beginning of each bitset
      to store additional data. */
   FAL_STATIC_ASSERT(FAL_ARENA__UNUSED_BITS >= sizeof(unsigned short) * CHAR_BIT);
+#endif
 
   /* Ensure bump allocation positions will wit in unsigned short */
   FAL_STATIC_ASSERT(FAL_ARENA_TOTAL < (unsigned long long)USHRT_MAX);
@@ -293,7 +327,11 @@ static inline void* FAL__INT(block_bs)(FAL__T* arena) {
 }
 
 static inline unsigned short* FAL__INT(top_ptr)(FAL__T* arena) {
+#ifdef FAL_ARENA_DEF_INCOMPACT
+  return (unsigned short*)FAL__INT(block)(arena, FAL_ARENA__HEADER_BEGIN);
+#else
   return (unsigned short*)(void*)arena;
+#endif
 }
 
 static inline void* FAL__INT(markalloc)(FAL__T* arena, size_t start, size_t size) {
@@ -371,6 +409,14 @@ static inline FAL__T* FAL__PUB(for)(void* ptr) {
   return (FAL__T*)( ((uintptr_t)ptr) & FAL_ARENA__MASK );
 }
 
+static inline int FAL__PUB(can_belong)(void* ptr) {
+  return !!(((uintptr_t)ptr) & FAL_ARENA__BLOCK_MASK);
+}
+
+static inline int FAL__PUB(empty)(FAL__T* arena) {
+  return *FAL__INT(top_ptr)(arena) == FAL_ARENA_BEGIN;
+}
+
 static inline int FAL__PUB(used)(void* ptr) {
   FAL__T* arena = FAL__PUB(for)(ptr);
   void* mark_bs = FAL__INT(mark_bs)(arena);
@@ -420,18 +466,25 @@ static inline void* FAL__PUB(user_hi)(FAL__T* arena) {
   return FAL__INT(block_bs)(arena);
 }
 
+static inline void* FAL__PUB(header)(FAL__T* arena) {
 #ifdef FAL_ARENA_DEF_HEADER_SIZE
-static inline void* FAL__PUB(header)(FAL__T* arena) {
-  return FAL__INT(block)(arena, FAL_ARENA__HEADER_BEGIN);
-}
+  return (void*)((char*)FAL__INT(block)(arena, FAL_ARENA__HEADER_BEGIN)
+    + FAL_ARENA__HEADER_TOP_SIZE);
 #else
-static inline void* FAL__PUB(header)(FAL__T* arena) {
   FAL_UNUSED(arena);
   assert(0 && "[" FAL_STR(FAL__PUB(header)) "] cannot be called, "
     "header doesn't exist for this arena type");
   return 0;
-} 
 #endif
+}
+
+static inline void* FAL__PUB(mem_start)(FAL__T* arena) {
+  return FAL__INT(block)(arena, FAL_ARENA_BEGIN);
+}
+
+static inline void* FAL__PUB(mem_end)(FAL__T* arena) {
+  return (char*)arena + FAL_ARENA_SIZE;
+}
 
 /******************************************************************************/
 /*                                ALLOCATING                                  */
@@ -703,7 +756,6 @@ static inline void* FAL__PUB(next_noskip)(void* ptr) {
 #undef FAL_ARENA_TOTAL
 #undef FAL_ARENA_USER_LO_BYTES
 #undef FAL_ARENA_USER_HI_BYTES
-#undef FAL_ARENA_HEADER_SIZE
 
 #undef FAL_ARENA__BLOCK_POW
 #undef FAL_ARENA__POW
@@ -715,12 +767,22 @@ static inline void* FAL__PUB(next_noskip)(void* ptr) {
 #undef FAL_ARENA__UNUSED_BYTES
 #undef FAL_ARENA__HEADER_BLOCKS
 #undef FAL_ARENA__HEADER_BEGIN
+#undef FAL_ARENA__HEADER_TOP_SIZE
+#undef FAL_ARENA__HEADER_SIZE
 
 /* Undef compile-time parameters. */
 #ifndef FAL_ARENA_DEF_NO_UNDEF
 #undef FAL_ARENA_DEF_BLOCK_POW
 #undef FAL_ARENA_DEF_POW
 #undef FAL_ARENA_DEF_NAME
+
+#ifdef FAL_ARENA_DEF_HEADER_SIZE
+#undef FAL_ARENA_DEF_HEADER_SIZE
+#endif
+
+#ifdef FAL_ARENA_DEF_INCOMPACT
+#undef FAL_ARENA_DEF_INCOMPACT
+#endif
 #endif /* FAL_ARENA_DEF_NO_UNDEF */
 
 #ifdef __cplusplus

@@ -9,12 +9,15 @@ int main() {
   arena_t* arena = (arena_t*)testlib_alloc_arena(arena_SIZE);
   arena_init(arena);
 
-  assert(arena_SIZE == 65536u);
-  assert(arena_BLOCK_SIZE == 16u);
-  assert(arena_BEGIN == 64u);
-  assert(arena_END == 4096u);
-  assert(arena_TOTAL == 4032u);
-  assert(arena_USER_LO_BYTES == 6u);
-  assert(arena_USER_HI_BYTES == 8u);
-  assert(arena_bumptop(arena) == arena_BEGIN);
+  fal_asserteq(arena_SIZE, 65536u, size_t, "%zu");
+  fal_asserteq(arena_BLOCK_SIZE, 16u, size_t, "%zu");
+  fal_asserteq(arena_BEGIN, 64u, size_t, "%zu");
+  fal_asserteq(arena_END, 4096u, size_t, "%zu");
+  fal_asserteq(arena_TOTAL, 4032u, size_t, "%zu");
+  fal_asserteq(arena_USER_LO_BYTES, 6u, size_t, "%zu");
+  fal_asserteq(arena_USER_HI_BYTES, 8u, size_t, "%zu");
+  fal_asserteq(arena_bumptop(arena), arena_BEGIN, size_t, "%zu");
+  fal_asserteq(arena_mem_start(arena),
+    (char*)arena + arena_BEGIN*arena_BLOCK_SIZE, void*, "%p");
+  fal_asserteq(arena_mem_end(arena), (char*)arena + arena_SIZE, void*, "%p");
 }
