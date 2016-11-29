@@ -2,6 +2,7 @@
 #define __FAL_TEST_ARENA_TESTLIB_H__
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
 
@@ -26,14 +27,26 @@ static inline void* testlib_alloc_arena(size_t size) {
 #include <sys/mman.h>
 
 static inline void* testlib_alloc_arena(size_t size) {
-  void* mem = mmap(0, size,
+  assert(!(size & (size - 1)) && "size must be power of 2");
+
+  void* mem = mmap(0, size*2,
     PROT_READ | PROT_WRITE,
     MAP_PRIVATE | MAP_ANONYMOUS,
     -1,
     0);
   assert(mem && "mmap");
 
-  return mem;
+  uintptr_t addr = (uintptr_t)mem;
+  uintptr_t mask = size - 1; /* 000..01..111 */
+  if (!(addr & mask)) {
+    return mem;
+  }
+
+  uintptr_t aligned = (addr + size) & ~mask;
+  munmap(mem, aligned - addr);
+  munmap((void*)(aligned + size), size - (aligned - addr));
+
+  return (void*)aligned;
 }
 
 #else

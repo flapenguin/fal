@@ -20,7 +20,24 @@ static inline void* mkspace();
 #elif defined(linux) || defined(__MINGW32__) || defined(__GNUC__)
 # include <sys/mman.h>
   static inline void* mkspace() {
-    return mmap(0, space_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void* mem = mmap(0, space_SIZE*2,
+      PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS,
+      -1,
+      0);
+    assert(mem && "mmap");
+
+    uintptr_t addr = (uintptr_t)mem;
+    uintptr_t mask = space_SIZE - 1; /* 000..01..111 */
+    if (!(addr & mask)) {
+      return mem;
+    }
+
+    uintptr_t aligned = (addr + space_SIZE) & ~mask;
+    munmap(mem, aligned - addr);
+    munmap((void*)(aligned + space_SIZE), space_SIZE - (aligned - addr));
+
+    return (void*)aligned;
   }
 #else
 # error Dont know how to alloc page on this system.

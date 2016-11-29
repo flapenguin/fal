@@ -26,7 +26,8 @@ Essentials:
 #define FAL_ARENA_DEF_BLOCK_POW 4u    /* 16 byte blocks */
 #include <fal/arena.h>
 
-arena_t* a = mmap(arena_SIZE, ...);
+arena_t* a = mmap(arena_SIZE, ...); /* you may need to mmap more and then munmap
+                                       unused parts to get aligned 64 KiB */
 arena_init(a)
 
 /* store additional arena_USER_LO_BYTES and arena_USER_HI_BYTES  */
