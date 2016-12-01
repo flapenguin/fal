@@ -1,5 +1,5 @@
 #define NEWPOS
-#include "common.h"
+#include "gc-common.h"
 
 int main() {
   printf("Sample mark&compact garbage collector based on fal/arena.h.\n");

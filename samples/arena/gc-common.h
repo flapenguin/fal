@@ -1,5 +1,5 @@
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#ifndef __GC_COMMON_H__
+#define __GC_COMMON_H__
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -84,4 +84,4 @@ static void alloc_objs(space_t* space, object_t* objs[], size_t len) {
   }
 }
 
-#endif /* __COMMON_H__ */
+#endif /* __GC_COMMON_H__ */

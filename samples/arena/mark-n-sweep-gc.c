@@ -1,4 +1,4 @@
-#include "common.h"
+#include "gc-common.h"
 
 int main() {
   printf("Sample mark&sweep garbage collector based on fal/arena.h.\n");

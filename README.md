@@ -14,8 +14,11 @@ Can store additional bit per allocation called `mark`.
 
 See header comment in `fal/arena.h` for docs.
 
-Samples:
-- `arena-gc`: mark&sweep, mark&compact and semispace garbage collectors.
+Samples (`samples/arena`):
+- `mark-n-sweep-gc` - simple **mark&sweep** garbage collector built on top of `arena`
+- `mark-n-compact-gc` - simple **mark&compact** garbage collector built on top of `arena`
+- `semispace-gc` - simple **semispace** garbage collector built on top of `arena`
+- `microalloc` - simple `malloc`, `free` and `realloc` built on top of `arena`
 
 Based on ideas from [LuaJIT arenas](http://wiki.luajit.org/New-Garbage-Collector#arenas).
 
