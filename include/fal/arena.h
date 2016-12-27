@@ -195,7 +195,6 @@ extern "C" {
 #define FAL_ARENA__BLOCKS           FAL__INT(BLOCKS)
 #define FAL_ARENA__BITSET_SIZE      FAL__INT(BITSET_SIZE)
 #define FAL_ARENA__BLOCK_MASK       FAL__INT(BLOCK_MASK)
-#define FAL_ARENA__MASK             FAL__INT(MASK)
 #define FAL_ARENA__UNUSED_BITS      FAL__INT(UNUSED_BITS)
 #define FAL_ARENA__UNUSED_BYTES     FAL__INT(UNUSED_BYTES)
 
@@ -203,6 +202,9 @@ extern "C" {
 #define FAL_ARENA__HEADER_BLOCKS    FAL__INT(HEADER_BLOCKS)
 #define FAL_ARENA__HEADER_BEGIN     FAL__INT(HEADER_BEGIN)
 #define FAL_ARENA__HEADER_SIZE      FAL__INT(HEADER_SIZE)
+
+/* ISO C restricts enumerator values to range of ‘int’ */
+#define FAL_ARENA__MASK             (~(uintptr_t)FAL_ARENA__BLOCK_MASK)
 
 typedef struct FAL__T FAL__T;
 
@@ -227,7 +229,6 @@ enum FAL__INT(defs) {
   FAL_ARENA__BLOCKS = FAL_ARENA_SIZE / FAL_ARENA_BLOCK_SIZE,
   FAL_ARENA__BITSET_SIZE = FAL_ARENA__BLOCKS / CHAR_BIT,
   FAL_ARENA__BLOCK_MASK = FAL_ARENA_SIZE - 1,
-  FAL_ARENA__MASK = ~FAL_ARENA__BLOCK_MASK,
 
   FAL_ARENA__HEADER_BLOCKS = (FAL_ARENA__HEADER_SIZE + FAL_ARENA_BLOCK_SIZE - 1)
     / FAL_ARENA_BLOCK_SIZE,
@@ -391,12 +392,12 @@ static inline void FAL__PUB(init)(FAL__T* arena) {
   assert(((uintptr_t)arena & FAL_ARENA__BLOCK_MASK) == 0
     && "[" FAL_STR(FAL__PUB(init)) "] arena is not aligned to its size");
 
-  char* mark_bs = FAL__INT(mark_bs)(arena);
-  char* block_bs = FAL__INT(block_bs)(arena);
+  void* mark_bs = FAL__INT(mark_bs)(arena);
+  void* block_bs = FAL__INT(block_bs)(arena);
 
-  memset(mark_bs + FAL_ARENA__UNUSED_BYTES, 0,
+  memset((char*)mark_bs + FAL_ARENA__UNUSED_BYTES, 0,
     FAL_ARENA__BITSET_SIZE - FAL_ARENA__UNUSED_BYTES);
-  memset(block_bs + FAL_ARENA__UNUSED_BYTES, 0,
+  memset((char*)block_bs + FAL_ARENA__UNUSED_BYTES, 0,
     FAL_ARENA__BITSET_SIZE - FAL_ARENA__UNUSED_BYTES);
 
   *FAL__INT(top_ptr)(arena) = FAL_ARENA_BEGIN;
