@@ -420,12 +420,13 @@ static inline int FAL__PUB(empty)(FAL__T* arena) {
 
 static inline int FAL__PUB(used)(void* ptr) {
   FAL__T* arena = FAL__PUB(for)(ptr);
+  unsigned short top = *FAL__INT(top_ptr)(arena);
   void* mark_bs = FAL__INT(mark_bs)(arena);
   void* block_bs = FAL__INT(block_bs)(arena);
 
   size_t ix = FAL__INT(ix_for)(ptr);
 
-  return !FAL__INT(is_free)(mark_bs, block_bs, ix);
+  return ix < top && !FAL__INT(is_free)(mark_bs, block_bs, ix);
 }
 
 static inline size_t FAL__PUB(bsize)(void* ptr) {
