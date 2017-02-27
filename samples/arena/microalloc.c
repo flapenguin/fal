@@ -83,9 +83,7 @@ void mc_init() {
 void* mc_alloc(size_t size) {
   if (size > mc_bucket_EFFECTIVE_SIZE / 4) {
     mc_huge_t* entry = mc_bucket_alloc(mc_huge, sizeof(mc_huge_t));
-    if (!entry) {
-      assert("No more space for huge entries.");
-    }
+    assert(entry && "No more space for huge entries.");
 
     void* mem = osalloc(size);
     entry->ptr = mem;
